@@ -1,0 +1,225 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "SO - Integration";
+}
+
+<style>
+    .table td {
+        vertical-align: middle;
+    }
+
+        .table td:first-child {
+            white-space: nowrap;
+        }
+
+        .table td select {
+            cursor: pointer;
+        }
+
+    .table th {
+        background-color: #007bff;
+        color: white;
+    }
+
+        .table th:first-child {
+            border-top-left-radius: 10px;
+            white-space: nowrap;
+        }
+
+        .table th:last-child {
+            border-top-right-radius: 10px;
+        }
+</style>
+
+<table class="table table-hover">
+    <thead class="thead-dark">
+        <tr>
+            <th scope="col">Item Number</th>
+            <th scope="col">Item Name</th>
+            <th scope="col">Site</th>
+            <th scope="col">Warehouse</th>
+            <th scope="col">Location</th>
+        </tr>
+    </thead>
+    <tbody id="itemsTableBody">
+        <!-- Rows will be populated dynamically by JavaScript -->
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-end mt-5">
+    <button type="submit" class="btn btn-primary w-auto">Generate Sales Order</button>
+</div>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+
+        // Fetching Items and then Sites
+        $.ajax({
+            url: "/Index?handler=FetchItems",
+            type: "GET",
+            success: function (itemResponse) {
+                const itemsTableBody = $("#itemsTableBody");
+                itemsTableBody.empty();
+
+                // Populate the table with item data
+                itemResponse.forEach(item => {
+                    itemsTableBody.append(`
+                        <tr>
+                            <td class="item-number">${item.itemNumber}</td>
+                            <td class="item-name">${item.itemName}</td>
+                            <td>
+                                <select class="form-select site-dropdown">
+                                    <option>Loading...</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-select warehouse-dropdown">
+                                    <option value="WH-01">WH-01</option>
+                                    <option value="WH-02">WH-02</option>
+                                    <option value="WH-03">WH-03</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-select location-dropdown">
+                                    <option value="Location-01">Location-01</option>
+                                    <option value="Location-02">Location-02</option>
+                                    <option value="Location-03">Location-03</option>
+                                </select>
+                            </td>
+                        </tr>
+                    `);
+                });
+
+                // Fetch Sites after items are loaded
+                $.ajax({
+                    url: "/Index?handler=FetchSites",
+                    type: "GET",
+                    success: function (siteResponse) {
+                        const siteDropdowns = $("select.site-dropdown");
+                        siteDropdowns.empty(); // Clear existing options
+
+                        // Add the sites to each site dropdown
+                        siteResponse.forEach(site => {
+                            siteDropdowns.append(`<option value="${site}">${site}</option>`);
+                        });
+                    },
+                    error: function () {
+                        alert("Error fetching sites");
+                    }
+                });
+            },
+            error: function () {
+                alert("Error fetching items");
+            }
+        });
+
+        // Function to handle site dropdown change
+        $("select.site-dropdown").on('change', function () {
+            let selectedSite = $(this).val();
+
+            console.log("Selected Site: ", selectedSite);
+        });
+
+    });
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Data.SqlClient;
+
+namespace ax.Pages
+{
+    public class IndexModel : PageModel
+    {
+        private readonly ILogger<IndexModel> _logger;
+        private readonly IConfiguration _configuration;
+
+        public List<itemInfo> ItemsList { get; private set; } = new List<itemInfo>();
+        public List<string> SiteList { get; private set; } = new List<string>();
+
+        public IndexModel(ILogger<IndexModel> logger, IConfiguration configuration)
+        {
+            _logger = logger;
+            _configuration = configuration;
+        }
+
+        private void LoadItemsData()
+        {
+            string connString = _configuration.GetConnectionString("DefaultConnection");
+
+            using (SqlConnection connection = new SqlConnection(connString))
+            {
+                connection.Open();
+
+                string sql = "SELECT ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
+
+                using (SqlCommand command = new SqlCommand(sql, connection))
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    ItemsList.Clear(); // Clear existing data before adding new items
+
+                    while (reader.Read())
+                    {
+                        ItemsList.Add(new itemInfo
+                        {
+                            itemNumber = reader["ITEMID"].ToString(),
+                            itemName = reader["ITEMNAME"].ToString()
+                        });
+                    }
+                }
+            }
+        }
+
+        public JsonResult OnGetFetchItems()
+        {
+            // Return the list of items directly as JSON
+            LoadItemsData();  // Load the data before returning
+
+            // Log the number of items being sent
+            _logger.LogInformation($"Sending {ItemsList.Count} Items.");
+
+            return new JsonResult(ItemsList);
+        }
+
+        // AJAX Handler for Fetching Sites
+        public JsonResult OnGetFetchSites()
+        {
+            SiteList = new List<string> { "MATCO01", "MATCO02", "RIVIANA" };
+
+            // Log site list being sent
+            _logger.LogInformation($"Sending Site List: {string.Join(", ", SiteList)}");
+
+            return new JsonResult(SiteList);
+        }
+    }
+
+    public class itemInfo
+    {
+        public string itemNumber { get; set; }
+        public string itemName { get; set; }
+    }
+}

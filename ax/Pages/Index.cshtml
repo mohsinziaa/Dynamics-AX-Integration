@@ -1,0 +1,165 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "SO - Integration";
+}
+
+<style>
+    
+    .table td {
+        vertical-align: middle;
+    }
+
+    .table td:first-child {
+        white-space: nowrap;
+    }
+
+    .table td select {
+        cursor: pointer;
+    }
+
+    .table th {
+        background-color: #007bff;
+        color: white;
+        white-space: nowrap;
+    }
+
+    .table th:first-child {
+        border-top-left-radius: 10px;
+        white-space: nowrap;
+    }
+
+    .table th:last-child {
+        border-top-right-radius: 10px;
+    }
+</style>
+
+<table class="table table-hover">
+    <thead class="thead-dark">
+        <tr>
+            <th scope="col">Item Number</th>
+            <th scope="col">Item Name</th>
+            <th scope="col">Site</th>
+            <th scope="col">Warehouse</th>
+            <th scope="col">Location</th>
+        </tr>
+    </thead>
+    <tbody>
+
+        @foreach (var item in Model.itemsList)
+        {
+        <tr>
+            <td>@item.itemNumber</td>
+            <td>@item.itemName</td>
+
+                <td>
+                    <select class="form-select site-dropdown">
+                        <option>MATCO01</option>
+                    </select>
+                </td>
+            <td>
+                    <select class="form-select warehouse-dropdown">
+                        <option>Dock-01</option>
+                    </select>
+            </td>
+            <td>
+                <select class="form-select">
+                    <option value="Location-01">Location-01</option>
+                    <option value="Location-02">Location-02</option>
+                    <option value="Location-03">Location-03</option>
+                </select>
+            </td>
+        </tr>
+        }
+
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-end mt-5">
+    <button type="submit" class="btn btn-primary w-auto">Generate Sales Order</button>
+</div>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+        // Fetch sites and populate site dropdown
+        $.ajax({
+            url: "/Index?handler=FetchSites",
+            type: "GET",
+            success: function (response) {
+                let siteDropdowns = $("select.site-dropdown");
+                siteDropdowns.empty();
+
+                // Append new options
+                response.forEach(site => {
+                    siteDropdowns.append(`<option value="${site}">${site}</option>`);
+                });
+
+                // Trigger change event for the first site if it's already selected
+                let selectedSite = siteDropdowns.val();
+                if (selectedSite) {
+                    console.log(`Manually triggering change for site: ${selectedSite}`);
+                    // Update the warehouses based on the pre-selected site
+                    updateWarehouses(selectedSite, siteDropdowns);
+                }
+            },
+            error: function (xhr, status, error) {
+                var err = eval("(" + xhr.responseText + ")");
+                alert("Error: " + err.Message);
+            },
+        });
+        
+        // Event listener for site selection change
+        $("select.site-dropdown").on('change', function () {
+            let selectedSite = $(this).val();
+
+            // Update the warehouse dropdown based on the selected site
+            updateWarehouses(selectedSite, $(this));
+        });
+
+        // Function to update warehouses based on selected site
+        function updateWarehouses(siteName, siteDropdown) {
+            if (!siteName) return;  // Exit if no site is selected
+
+            // Fetch warehouses for the selected site
+            $.ajax({
+                url: "/Index?handler=FetchWarehouses",
+                type: "GET",
+                data: { siteName: siteName },
+                success: function (response) {
+                    // Get the warehouse dropdown in the same row as the site dropdown
+                    let warehouseDropdown = siteDropdown.closest('tr').find("select.warehouse-dropdown");
+
+                    // Clear current options
+                    warehouseDropdown.empty();
+
+                    // Append new warehouse options based on the selected site
+                    response.forEach(function (warehouse) {
+                        warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
+                    });
+
+                    // Optionally, select the first warehouse as the default (if available)
+                    if (response.length > 0) {
+                        warehouseDropdown.val(response[0]);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error fetching warehouses: " + error);
+                }
+            });
+        }
+
+        // Event listener for site selection change
+        $("select.warehouse-dropdown").on('change', function () {
+            let selectedWarehouse = $(this).val();
+
+            console.log(`Warehouse Selected: ${selectedWarehouse}`);
+
+            // Update the warehouse dropdown based on the selected site
+            // updateWarehouses(selectedSite, $(this));
+        });
+
+
+    });
+</script>
