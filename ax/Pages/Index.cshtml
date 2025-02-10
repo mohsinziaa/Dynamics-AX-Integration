@@ -5,36 +5,50 @@
 }
 
 <style>
-    
     .table td {
         vertical-align: middle;
     }
 
-    .table td:first-child {
-        white-space: nowrap;
-    }
-
-    .table td select {
-        cursor: pointer;
-    }
+        .table td:first-child, .table th:first-child {
+            white-space: nowrap;
+        }
 
     .table th {
         background-color: #007bff;
         color: white;
-        white-space: nowrap;
+        font-size: 1.2rem;
+        font-weight: 500;
     }
 
-    .table th:first-child {
-        border-top-left-radius: 10px;
-        white-space: nowrap;
+        .table th:first-child {
+            border-top-left-radius: 10px;
+        }
+
+        .table th:last-child {
+            border-top-right-radius: 10px;
+        }
+
+    .search-container {
+        margin-bottom: 15px;
+        text-align: left;
     }
 
-    .table th:last-child {
-        border-top-right-radius: 10px;
-    }
+        .search-container .form-control {
+            width: 300px;
+            margin-right: 10px;
+        }
+
+        .search-container .btn {
+            margin-top: 0;
+        }
 </style>
 
-<table class="table table-hover">
+<div class="search-container d-flex justify-content-end align-items-center">
+    <input type="text" id="itemSearch" class="form-control" placeholder="Search by Item Name" autocomplete="off">
+    <button id="searchButton" class="btn btn-primary">Search</button>
+</div>
+
+<table id="itemList" class="table table-hover">
     <thead class="thead-dark">
         <tr>
             <th scope="col">Item Number</th>
@@ -45,36 +59,33 @@
         </tr>
     </thead>
     <tbody>
-
         @foreach (var item in Model.itemsList)
         {
-        <tr>
-            <td>@item.itemNumber</td>
-            <td>@item.itemName</td>
-
+            <tr>
+                <td>@item.itemNumber</td>
+                <td>@item.itemName</td>
                 <td>
                     <select class="form-select site-dropdown">
                         <option>MATCO01</option>
                     </select>
                 </td>
-            <td>
+                <td>
                     <select class="form-select warehouse-dropdown">
                         <option value="Dock-01">Dock-01</option>
                     </select>
-            </td>
-            <td>
-                <select class="form-select location-dropdown">
+                </td>
+                <td>
+                    <select class="form-select location-dropdown">
                         <option value="00001">00001</option>
-                </select>
-            </td>
-        </tr>
+                    </select>
+                </td>
+            </tr>
         }
-
     </tbody>
 </table>
 
 <div class="d-flex justify-content-end mt-5">
-    <button type="submit" class="btn btn-primary w-auto">Generate Sales Order</button>
+    <button type="submit" class="btn btn-primary w-auto" id="generateSObtn">Generate Sales Order</button>
 </div>
 
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -89,116 +100,129 @@
                 let siteDropdowns = $("select.site-dropdown");
                 siteDropdowns.empty();
 
-                // Append new options
                 response.forEach(site => {
                     siteDropdowns.append(`<option value="${site}">${site}</option>`);
                 });
 
-                // Trigger change event for the first site if it's already selected
                 let selectedSite = siteDropdowns.val();
                 if (selectedSite) {
-                    console.log(`Manually triggering change for site: ${selectedSite}`);
-                    // Update the warehouses based on the pre-selected site
                     updateWarehouses(selectedSite, siteDropdowns);
                 }
             },
-            error: function (xhr, status, error) {
-                var err = eval("(" + xhr.responseText + ")");
-                alert("Error: " + err.Message);
+            error: function () {
+                alert("Error fetching sites");
             },
         });
 
         // Event listener for site selection change
         $("select.site-dropdown").on('change', function () {
-            let selectedSite = $(this).val();
-
-            // Update the warehouse dropdown based on the selected site
-            updateWarehouses(selectedSite, $(this));
+            updateWarehouses($(this).val(), $(this));
         });
 
         // Function to update warehouses based on selected site
         function updateWarehouses(siteName, siteDropdown) {
-            if (!siteName) return;  // Exit if no site is selected
+            if (!siteName) return;
 
-            // Fetch warehouses for the selected site
             $.ajax({
                 url: "/Index?handler=FetchWarehouses",
                 type: "GET",
                 data: { siteName: siteName },
                 success: function (response) {
-
                     let row = siteDropdown.closest('tr');
                     let warehouseDropdown = row.find("select.warehouse-dropdown");
 
-                    // Clear current options
                     warehouseDropdown.empty();
-
-                    // Append new warehouse options based on the selected site
                     response.forEach(function (warehouse) {
                         warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
                     });
 
-                    // Optionally, select the first warehouse as the default (if available)
                     if (response.length > 0) {
                         warehouseDropdown.val(response[0]);
                         updateLocations(response[0], row);
                     }
                 },
-                error: function (xhr, status, error) {
-                    alert("Error fetching warehouses: " + error);
+                error: function () {
+                    alert("Error fetching warehouses");
                 }
             });
         }
 
-        // Event listener for site selection change
+        // Event listener for warehouse selection change
         $("select.warehouse-dropdown").on('change', function () {
-            let selectedWarehouse = $(this).val();
-    
-            console.log(`Warehouse changed: ${selectedWarehouse}`)
-
-            // Update the warehouse dropdown based on the selected site
-            updateLocations(selectedWarehouse, $(this));
+            updateLocations($(this).val(), $(this));
         });
 
-        // Function to update locations based on selected site
+        // Function to update locations based on selected warehouse
         function updateLocations(warehouseName, warehouseDropdown) {
-            if (!warehouseName) return;  // Exit if no warehouse is selected
+            if (!warehouseName) return;
 
             let row = warehouseDropdown.closest('tr');
             let siteName = row.find("select.site-dropdown").val();
 
-            console.log(`Fetching locations for Site: ${siteName} and Warehouse: ${warehouseName}`);
-
-
-            // Fetch locations for the selected site
             $.ajax({
                 url: "/Index?handler=FetchLocations",
                 type: "GET",
-                data: { warehouseName: warehouseName,
-                        siteName: siteName
-                },
+                data: { warehouseName: warehouseName, siteName: siteName },
                 success: function (response) {
-                    // Get the location dropdown in the same row as the site dropdown
                     let locationDropdown = row.find("select.location-dropdown");
 
                     locationDropdown.empty();
-
                     response.forEach(function (location) {
                         locationDropdown.append(`<option value="${location}">${location}</option>`);
                     });
 
                     if (response.length > 0) {
-                        locationDropdown.val(response[0]); // Auto-select first location if available
+                        locationDropdown.val(response[0]);
                     }
                 },
-                error: function (xhr, status, error) {
-                    alert("Error fetching locations: " + error);
+                error: function () {
+                    alert("Error fetching locations");
                 }
             });
         }
 
+        // Trigger search on pressing Enter
+        $("#itemSearch").on("keypress", function (e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                $("#searchButton").click();
+            }
+        });
 
+        // Search functionality
+        $("#searchButton").on("click", function () {
+            let searchQuery = $("#itemSearch").val().toLowerCase();
+            if (!searchQuery) {
+                $("#generateSObtn").show();
+                $("#itemList tr").show();
+                $("#noRecordsMessage").remove();
+                return;
+            }
 
+            let foundMatch = false;
+            $("#generateSObtn").hide();
+
+            $("#itemList tbody tr").each(function () {
+                let itemName = $(this).find("td:eq(1)").text().toLowerCase();
+
+                if (itemName.includes(searchQuery)) {
+                    $(this).show();
+                    foundMatch = true;
+                } else {
+                    $(this).hide();
+                }
+            });
+
+            if (!foundMatch) {
+                if ($("#noRecordsMessage").length === 0) {
+                    const messageRow = `<tr id="noRecordsMessage">
+                                            <td colspan="5" class="text-center text-danger">No records found</td>
+                                          </tr>`;
+                    $("#itemList tbody").append(messageRow);
+                }
+            } else {
+                $("#noRecordsMessage").remove();
+            }
+        });
     });
-
 </script>
