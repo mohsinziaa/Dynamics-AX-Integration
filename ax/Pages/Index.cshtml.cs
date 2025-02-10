@@ -33,7 +33,7 @@ namespace ax.Pages
 
                     //CUSTTABLE
                     //INVENTTABLE
-                    string sql = "SELECT ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
+                    string sql = "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
 
                     await using (SqlCommand command = new SqlCommand(sql, connection))
                     await using (SqlDataReader reader = await command.ExecuteReaderAsync())
@@ -117,6 +117,56 @@ namespace ax.Pages
             {
                 _logger.LogError($"Error fetching warehouses: {ex.Message}");
                 return new JsonResult(new { error = "An error occurred while fetching warehouses." });
+            }
+        }
+
+        public async Task<JsonResult> OnGetFetchLocations(string siteName, string warehouseName)
+        {
+            List<string> locationsList = new List<string>();
+
+            try
+            {
+                // Connection string from configuration
+                string connString = _configuration.GetConnectionString("DefaultConnection");
+
+                await using (SqlConnection connection = new SqlConnection(connString))
+                {
+                    await connection.OpenAsync();
+
+                    // Correct SQL query: Filtering by site and warehouse, fetching distinct locations
+                    string sql = @"
+                SELECT DISTINCT WMSLOCATIONID 
+                FROM INVENTDIM 
+                WHERE INVENTSITEID = @SiteName 
+                  AND INVENTLOCATIONID = @WarehouseName 
+                  AND LTRIM(RTRIM(WMSLOCATIONID)) <> ''";
+
+                    await using (SqlCommand command = new SqlCommand(sql, connection))
+                    {
+                        // Adding parameters to prevent SQL injection
+                        command.Parameters.AddWithValue("@SiteName", siteName);
+                        command.Parameters.AddWithValue("@WarehouseName", warehouseName);
+
+                        await using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                string location = reader["WMSLOCATIONID"].ToString();
+                                if (!string.IsNullOrEmpty(location))
+                                {
+                                    locationsList.Add(location);
+                                }
+                            }
+                        }
+                    }
+                }
+                Console.WriteLine(locationsList);
+                return new JsonResult(locationsList);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching locations: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching locations." });
             }
         }
 
