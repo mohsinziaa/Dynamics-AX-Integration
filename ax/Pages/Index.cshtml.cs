@@ -33,9 +33,6 @@ namespace ax.Pages
                 // Retrieve items
                 await FetchItemsAsync(connection);
 
-                // Set SiteList after fetching items
-                SiteList = new List<string> { "MATCO01", "MATCO02", "RIVIANA" };
-
             }
             catch (Exception ex)
             {
@@ -63,8 +60,11 @@ namespace ax.Pages
         }
 
         // AJAX Handler for Fetching Sites
-        public JsonResult OnGetFetchSites() =>
-            new JsonResult(SiteList);
+        public JsonResult OnGetFetchSites() {
+            // Set SiteList after fetching items
+            SiteList = new List<string> { "MATCO01", "MATCO02", "RIVIANA" };
+            return new JsonResult(SiteList);            
+        }
 
         public async Task<JsonResult> OnGetFetchWarehouses(string siteName)
         {
