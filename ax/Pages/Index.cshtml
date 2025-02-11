@@ -5,6 +5,13 @@
 }
 
 <style>
+
+    .table td,
+    .table input,
+    .table select {
+        font-size: 0.9rem;
+    }
+
     .table td {
         vertical-align: middle;
     }
@@ -16,7 +23,8 @@
     .table th {
         background-color: #007bff;
         color: white;
-        font-size: 1.2rem;
+        white-space: nowrap;
+        font-size: 1rem;
         font-weight: 400;
     }
 
@@ -26,6 +34,10 @@
 
         .table th:last-child {
             border-top-right-radius: 10px;
+        }
+
+        .table tr:last-of-type {
+            border-bottom: 2px solid #007bff;
         }
 
     .search-container {
@@ -41,12 +53,20 @@
         .search-container .btn {
             margin-top: 0;
         }
+
+    .table .quantity-input {
+        width: 70px; 
+    }
 </style>
 
-<div class="search-container d-flex justify-content-end align-items-center">
-    <input type="text" id="itemSearch" class="form-control" placeholder="Search by Item Name" autocomplete="off">
-    <button id="searchButton" class="btn btn-primary">Search</button>
+<div class="search-container d-flex justify-content-between align-items-center">
+    <input type="text" class="form-control w-25" id="orderNumber" value="Order Number: ABC-123456">
+    <div class="d-flex ms-auto">
+        <input type="text" id="itemSearch" class="form-control me-2" placeholder="Search by Item Name" autocomplete="off">
+        <button id="searchButton" class="btn btn-primary">Search</button>
+    </div>
 </div>
+
 
 <table id="itemList" class="table table-hover">
     <thead class="thead-dark">
@@ -56,6 +76,8 @@
             </th>
             <th scope="col">Item Number</th>
             <th scope="col">Item Name</th>
+            <th scope="col">Quantity</th>
+            <th scope="col">Unit</th>
             <th scope="col">Site</th>
             <th scope="col">Warehouse</th>
             <th scope="col">Location</th>
@@ -70,6 +92,16 @@
                 </td>
                 <td>@item.itemNumber</td>
                 <td>@item.itemName</td>
+                <td>
+                    <input type="text" class="form-control quantity-input" min="1" placeholder="50">
+                </td>
+                <td>
+                    <select class="form-select unit-dropdown">
+                        <option value="KG">KG</option>
+                        <option value="Pcs">Pcs</option>
+                        <option value="Ton">Ton</option>
+                    </select>
+                </td>
                 <td>
                     <select class="form-select site-dropdown">
                         <option>MATCO01</option>
@@ -259,6 +291,8 @@
                     let itemData = {
                         itemNumber: $(this).find("td:eq(1)").text().trim(),
                         itemName: $(this).find("td:eq(2)").text().trim(),
+                        quantity: $(this).find(".quantity-input").val(),
+                        unit: $(this).find("select.unit-dropdown").val(),
                         site: $(this).find("select.site-dropdown").val(),
                         warehouse: $(this).find("select.warehouse-dropdown").val(),
                         location: $(this).find("select.location-dropdown").val()
