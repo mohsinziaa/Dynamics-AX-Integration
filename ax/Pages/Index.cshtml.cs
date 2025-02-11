@@ -36,7 +36,7 @@ namespace ax.Pages
             }
             catch (Exception ex)
             {
-                _logger.LogError($"❌ Database Connection Failed! Error: {ex.Message}");
+                _logger.LogError($"Database Connection Failed! Error: {ex.Message}");
             }
         }
 

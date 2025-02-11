@@ -247,5 +247,28 @@
             }
         });
 
+        $("#generateSObtn").on("click", function () {
+            // console.log("SO button clicked");
+
+                let selectedItems = [];
+
+            $("#itemList tbody tr").each(function () {
+                let checkbox = $(this).find(".record-checkbox");
+
+                if (checkbox.prop("checked")) {
+                    let itemData = {
+                        itemNumber: $(this).find("td:eq(1)").text().trim(),
+                        itemName: $(this).find("td:eq(2)").text().trim(),
+                        site: $(this).find("select.site-dropdown").val(),
+                        warehouse: $(this).find("select.warehouse-dropdown").val(),
+                        location: $(this).find("select.location-dropdown").val()
+                    };
+                    selectedItems.push(itemData);
+                }
+            });
+
+        console.log("Selected Items:", selectedItems);
+        });
+
     });
 </script>
