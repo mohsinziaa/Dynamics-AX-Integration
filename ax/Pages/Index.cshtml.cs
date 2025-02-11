@@ -36,8 +36,6 @@ namespace ax.Pages
                 // Set SiteList after fetching items
                 SiteList = new List<string> { "MATCO01", "MATCO02", "RIVIANA" };
 
-                _logger.LogInformation($"📊 Retrieved {ItemsList.Count} Items.");
-                _logger.LogInformation($"🏭 Site List: {string.Join(", ", SiteList)}");
             }
             catch (Exception ex)
             {
