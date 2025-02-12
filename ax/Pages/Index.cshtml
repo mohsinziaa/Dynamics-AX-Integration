@@ -6,11 +6,28 @@
 
 <style>
 
-    /* .table td, */
-    /* .table input, */
-    /* .table select { */
-    /*     font-size: 0.9rem; */
-    /* } */
+    body {
+        overflow: hidden; 
+    }
+
+    .table-container {
+        max-height: 400px;
+        overflow-y: auto;
+        overflow-x: auto;
+        display: block;
+        white-space: nowrap;
+        position: relative; /* Added for sticky header */
+    }
+
+    .table th {
+        background-color: #007bff;
+        color: white;
+        white-space: nowrap;
+        font-weight: 400;
+        position: sticky; /* This makes the header sticky */
+        top: 0; /* Keeps it at the top of the table when scrolling */
+        z-index: 1; /* Ensures the header stays above the table body */
+    }
 
     .table td {
         vertical-align: middle;
@@ -19,13 +36,6 @@
         .table td:first-child, .table th:first-child {
             white-space: nowrap;
         }
-
-    .table th {
-        background-color: #007bff;
-        color: white;
-        white-space: nowrap;
-        font-weight: 400;
-    }
 
         .table th:first-child {
             border-top-left-radius: 10px;
@@ -53,19 +63,25 @@
             margin-top: 0;
         }
 
-    .table .quantity-input {
-        width: 70px; 
+    .table input[type='text']{
+        width: 100px; 
     }
+
+    .table select {
+        width: 140px;
+    }
+
 </style>
 
 <div class="search-container d-flex justify-content-between align-items-center">
-    <input type="text" class="form-control w-25" id="orderNumber" value="SO Number: SO-138615">
+    <input type="text" class="form-control w-25" id="customerDetails" readonly>
     <div class="d-flex ms-auto">
         <input type="text" id="itemSearch" class="form-control me-2" placeholder="Search by Item Name" autocomplete="off">
         <button id="searchButton" class="btn btn-primary">Search</button>
     </div>
 </div>
 
+<div class="table-container">
 
 <table id="itemList" class="table table-hover">
     <thead class="thead-dark">
@@ -75,12 +91,16 @@
             </th>
             <th scope="col">Item Number</th>
             <th scope="col">Item Name</th>
-            <th scope="col">Quantity</th>
-            <th scope="col">Unit</th>
             <th scope="col">Site</th>
             <th scope="col">Warehouse</th>
             <th scope="col">Location</th>
-        </tr>
+            <th scope="col">Quantity</th>
+            <th scope="col">Unit</th>
+            <th scope="col">Unit Price</th>
+            <th scope="col">Packing Unit</th>
+            <th scope="col">Master Unit</th>
+            <th scope="col">Master Unit Qty</th>
+            </tr>
     </thead>
     <tbody>
         @foreach (var item in Model.ItemsList)
@@ -91,16 +111,6 @@
                 </td>
                 <td>@item.itemNumber</td>
                 <td>@item.itemName</td>
-                <td>
-                    <input type="text" class="form-control quantity-input" min="1" placeholder="50">
-                </td>
-                <td>
-                    <select class="form-select unit-dropdown">
-                        <option value="KG">KG</option>
-                        <option value="Pcs">Pcs</option>
-                        <option value="Ton">Ton</option>
-                    </select>
-                </td>
                 <td>
                     <select class="form-select site-dropdown">
                         <option>MATCO01</option>
@@ -113,13 +123,45 @@
                 </td>
                 <td>
                     <select class="form-select location-dropdown">
-                        <option value="00001">00001</option>
+                        <option value="0001">0001</option>
                     </select>
                 </td>
+
+                <td>
+                    <input type="text" class="form-control quantity-input" min="1">
+                </td>
+                <td>
+                    <select class="form-select unit-dropdown">
+                        <option value="KG">KG</option>
+                        <option value="Pcs">Pcs</option>
+                        <option value="Ton">Ton</option>
+                    </select>
+                </td>
+
+                <td>
+                    <input type="text" class="form-control unit-price-input" min="1">
+                </td>
+
+                <td>
+                    <input type="text" class="form-control packing-unit-input" min="1">
+                </td>
+
+                <td>
+                    <input type="text" class="form-control master-unit-input" min="1">
+                </td>
+
+                <td>
+                    <input type="text" class="form-control master-unit-qty" min="1">
+                </td>
+
             </tr>
         }
     </tbody>
 </table>
+
+</div>
+
+
 
 <div class="d-flex justify-content-end mt-5">
     <button type="submit" class="btn btn-primary w-auto" id="generateSObtn">Generate Sales Order</button>
@@ -129,6 +171,10 @@
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     $(document).ready(function () {
+
+        // Fetch customer data from sessionStorage
+        const customerData = JSON.parse(sessionStorage.getItem("customerData"));
+
         // Fetch sites and populate site dropdown
         $.ajax({
             url: "/Index?handler=FetchSites",
@@ -141,13 +187,36 @@
                     siteDropdowns.append(`<option value="${site}">${site}</option>`);
                 });
 
-                let selectedSite = siteDropdowns.val();
-                if (selectedSite) {
-                    updateWarehouses(selectedSite, siteDropdowns);
+                // Check if customerData.site exists and select it
+                const customerSite = customerData?.site;
+                if (customerSite) {
+                    siteDropdowns.each(function () {
+                        $(this).val(customerSite).change();
+                    });
                 }
+
             },
             error: function () {
                 alert("Error fetching sites");
+            },
+        });
+
+
+                // Fetch sites and populate site dropdown
+        $.ajax({
+            url: "/Index?handler=FetchUnits",
+            type: "GET",
+            success: function (response) {
+                let unitDropdowns = $("select.unit-dropdown");
+                unitDropdowns.empty();
+
+                response.forEach(unit => {
+                    unitDropdowns.append(`<option value="${unit}">${unit}</option>`);
+                });
+
+            },
+            error: function () {
+                alert("Error fetching units");
             },
         });
 
@@ -173,10 +242,16 @@
                         warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
                     });
 
-                    if (response.length > 0) {
-                        warehouseDropdown.val(response[0]);
-                        updateLocations(response[0], row);
-                    }
+
+                    const customerWarehouse = customerData?.warehouse;
+
+                    if(customerData.warehouse){
+                        warehouseDropdown.each(function () {
+                            $(this).val(customerWarehouse).change();
+                        });
+                        warehouseDropdown.val(customerWarehouse);
+                        updateLocations(customerWarehouse, row);
+                    }                    
                 },
                 error: function () {
                     alert("Error fetching warehouses");
@@ -302,6 +377,15 @@
 
         console.log("Selected Items:", selectedItems);
         });
+
+
+    if (customerData) {
+        console.log(customerData);
+        const custDetails = `${customerData.name} - ${customerData.customerAccount}`;
+        $("#customerDetails").val(custDetails);
+
+    }
+
 
     });
 </script>

@@ -42,7 +42,7 @@ namespace ax.Pages
 
         private async Task FetchItemsAsync(SqlConnection connection)
         {
-            const string sql = "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
+            const string sql = "SELECT ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
             await using var command = new SqlCommand(sql, connection);
             await using var reader = await command.ExecuteReaderAsync();
 
@@ -62,7 +62,7 @@ namespace ax.Pages
         // AJAX Handler for Fetching Sites
         public JsonResult OnGetFetchSites() {
             // Set SiteList after fetching items
-            SiteList = new List<string> { "MATCO01", "MATCO02", "RIVIANA" };
+            SiteList = new List<string> { "MATCO01", "MATCO02", "MATCO13", "RIVIANA" , "GODOWNS" };
             return new JsonResult(SiteList);            
         }
 
@@ -150,6 +150,46 @@ namespace ax.Pages
 
             return locationsList;
         }
+
+
+        public async Task<JsonResult> OnGetFetchUnits(string siteName)
+        {
+            try
+            {
+                var unitsList = await FetchUnitsAsync();
+                return new JsonResult(unitsList);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching warehouses: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching units." });
+            }
+        }
+
+        private async Task<List<string>> FetchUnitsAsync()
+        {
+            var unitsList = new List<string>();
+            string connString = _configuration.GetConnectionString("DefaultConnection");
+
+            await using var connection = new SqlConnection(connString);
+            await connection.OpenAsync();
+
+            const string sql = "SELECT DISTINCT SALESUNIT FROM SALESLINE WHERE SALESUNIT <> ' '";
+            await using var command = new SqlCommand(sql, connection);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                string unit = reader["SALESUNIT"].ToString();
+                if (!string.IsNullOrEmpty(unit))
+                {
+                    unitsList.Add(unit);
+                }
+            }
+
+            return unitsList;
+        }
+
     }
 
     public class itemInfo

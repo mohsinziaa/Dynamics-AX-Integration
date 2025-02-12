@@ -45,16 +45,15 @@
             <select class="form-select" id="site">
                 <option value="MATCO01">MATCO01</option>
                 <option value="MATCO02">MATCO02</option>
-                <option value="MATCO13" selected>MATCO13</option>
+                <option value="MATCO13">MATCO13</option>
                 <option value="RIVIANA">RIVIANA</option>
+                <option value="GODOWNS" selected>GODOWNS</option>
             </select>
         </div>
         <div class="col">
             <label for="warehouse" class="form-label">Warehouse</label>
-            <select class="form-select" id="warehouse">
-                <option value="WH-01">WH-01</option>
-                <option value="WH-02">WH-02</option>
-                <option value="WH-03">WH-03</option>
+            <select class="form-select" id="warehouse" readonly>
+                <option value="SD-Main">SD-Main</option>
             </select>
         </div>
     </div>
@@ -129,6 +128,9 @@
                 customerRequisition: $("#customerRequisition").val(),
                 reference: $("#reference").val()
             };
+
+            // Store the data in sessionStorage
+            sessionStorage.setItem("customerData", JSON.stringify(customerData));
 
             console.log(customerData);
         });
