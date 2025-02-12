@@ -94,12 +94,12 @@
             <th scope="col">Site</th>
             <th scope="col">Warehouse</th>
             <th scope="col">Location</th>
-            <th scope="col">Quantity</th>
             <th scope="col">Unit</th>
-            <th scope="col">Unit Price</th>
+            <th scope="col">Quantity</th>
             <th scope="col">Packing Unit</th>
+            <th scope="col">Packing Qty</th>
             <th scope="col">Master Unit</th>
-            <th scope="col">Master Unit Qty</th>
+            <th scope="col">Master Qty</th>
             </tr>
     </thead>
     <tbody>
@@ -128,10 +128,18 @@
                 </td>
 
                 <td>
-                    <input type="text" class="form-control quantity-input" min="1">
+                    <select class="form-select unit-dropdown">
+                        <option value="KG">KG</option>
+                        <option value="Pcs">Pcs</option>
+                        <option value="Ton">Ton</option>
+                    </select>
                 </td>
                 <td>
-                    <select class="form-select unit-dropdown">
+                    <input type="text" class="form-control quantity-input" min="1">
+                </td>
+
+                <td>
+                    <select class="form-select packing-unit-dropdown">
                         <option value="KG">KG</option>
                         <option value="Pcs">Pcs</option>
                         <option value="Ton">Ton</option>
@@ -139,19 +147,16 @@
                 </td>
 
                 <td>
-                    <input type="text" class="form-control unit-price-input" min="1">
+                    <input type="text" class="form-control packing-unit-qty-input" min="1">
                 </td>
 
                 <td>
-                    <input type="text" class="form-control packing-unit-input" min="1">
+                    <select class="form-select master-unit-dropdown">
+                    </select>
                 </td>
 
                 <td>
-                    <input type="text" class="form-control master-unit-input" min="1">
-                </td>
-
-                <td>
-                    <input type="text" class="form-control master-unit-qty" min="1">
+                    <input type="text" class="form-control master-unit-qty-input" min="1">
                 </td>
 
             </tr>
@@ -202,7 +207,7 @@
         });
 
 
-                // Fetch sites and populate site dropdown
+        // Fetch Units
         $.ajax({
             url: "/Index?handler=FetchUnits",
             type: "GET",
@@ -210,8 +215,13 @@
                 let unitDropdowns = $("select.unit-dropdown");
                 unitDropdowns.empty();
 
+                let packingUnitDropdowns = $("select.packing-unit-dropdown");
+                packingUnitDropdowns.empty();
+
+
                 response.forEach(unit => {
                     unitDropdowns.append(`<option value="${unit}">${unit}</option>`);
+                    packingUnitDropdowns.append(`<option value="${unit}">${unit}</option>`);
                 });
 
             },
@@ -365,11 +375,15 @@
                     let itemData = {
                         itemNumber: $(this).find("td:eq(1)").text().trim(),
                         itemName: $(this).find("td:eq(2)").text().trim(),
-                        quantity: $(this).find(".quantity-input").val(),
-                        unit: $(this).find("select.unit-dropdown").val(),
                         site: $(this).find("select.site-dropdown").val(),
                         warehouse: $(this).find("select.warehouse-dropdown").val(),
-                        location: $(this).find("select.location-dropdown").val()
+                        location: $(this).find("select.location-dropdown").val(),
+                        unit: $(this).find("select.unit-dropdown").val(),
+                        quantity: $(this).find(".quantity-input").val().trim(),
+                        packingUnit: $(this).find("select.packing-unit-dropdown").val(),
+                        packingUnitQty: $(this).find(".packing-unit-qty-input").val().trim(),
+                        masterUnit: $(this).find("select.master-unit-dropdown").val(), 
+                        masterUnitQty: $(this).find(".master-unit-qty-input").val().trim()
                     };
                     selectedItems.push(itemData);
                 }
@@ -385,6 +399,63 @@
         $("#customerDetails").val(custDetails);
 
     }
+
+
+    // Copy Unit to Packing Unit on Tab
+    $(document).on("change", ".unit-dropdown", function () {
+        let row = $(this).closest("tr");
+        let selectedUnit = $(this).val();
+        row.find(".packing-unit-dropdown").val(selectedUnit).change(); 
+    });
+
+    // Copy Quantity to Packing Quantity on Tab
+    $(document).on("keydown", ".quantity-input", function (e) {
+        if (e.key === "Tab") {
+            let row = $(this).closest("tr");
+            let quantityValue = $(this).val().trim();
+            row.find(".packing-unit-qty-input").val(quantityValue); 
+            let itemNumber = row.find("td:eq(1)").text().trim(); // Item Number (ITEMID)
+
+            // Fetch Master Units
+            $.ajax({
+                url: "/Index?handler=FetchMasterUnits",
+                type: "GET",
+                data: { itemNumber: itemNumber },
+                success: function (response) {
+                    // Find the dropdown within the selected row
+                    let row = $("select.master-unit-dropdown").closest('tr'); // This assumes you're triggering the ajax on a specific row
+
+                    // Clear the dropdown first for the selected row
+                    let masterUnitDropdown = row.find("select.master-unit-dropdown");
+                    masterUnitDropdown.empty();
+
+                    // If the response contains master units
+                    if (response && response.length > 0) {
+                        // Populate dropdown with options
+                        response.forEach(unit => {
+                            masterUnitDropdown.append(`<option value="${unit}">${unit}</option>`);
+                        });
+                    } else {
+                        // If no master units are found, add an empty option
+                        masterUnitDropdown.append('<option value=""></option>');
+                    }
+                },
+                error: function () {
+                    alert("Error fetching units");
+                },
+            });
+
+
+
+        }
+    });
+
+
+    // Copy Unit to Packing Unit on Tab
+    $(document).on("change", ".master-unit-dropdown", function () {
+        console.log("Master Unit Dropdown Changed");
+    });
+
 
 
     });

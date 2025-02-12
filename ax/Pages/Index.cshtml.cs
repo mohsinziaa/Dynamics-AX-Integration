@@ -152,7 +152,7 @@ namespace ax.Pages
         }
 
 
-        public async Task<JsonResult> OnGetFetchUnits(string siteName)
+        public async Task<JsonResult> OnGetFetchUnits()
         {
             try
             {
@@ -189,6 +189,55 @@ namespace ax.Pages
 
             return unitsList;
         }
+
+
+        public async Task<JsonResult> OnGetFetchMasterUnits(string itemNumber)
+        {
+            try
+            {
+                var masterUnitsList = await FetchMasterUnitsAsync(itemNumber);
+
+                // If no master units are found, return an empty string
+                if (masterUnitsList.Count == 0)
+                {
+                    return new JsonResult(new { masterUnit = "" });
+                }
+
+                // Return the list of master units if available
+                return new JsonResult(masterUnitsList);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching master units: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching master units." });
+            }
+        }
+
+        private async Task<List<string>> FetchMasterUnitsAsync(string itemNumber)
+        {
+            var masterUnitsList = new List<string>();
+            string connString = _configuration.GetConnectionString("DefaultConnection");
+
+            await using var connection = new SqlConnection(connString);
+            await connection.OpenAsync();
+
+            const string sql = "SELECT DISTINCT MASTERUNIT FROM SALESLINE WHERE ITEMID = @itemNumber AND MASTERUNIT <> ' '";
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@itemNumber", itemNumber);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                string masterUnit = reader["MASTERUNIT"].ToString();
+                if (!string.IsNullOrEmpty(masterUnit))
+                {
+                    masterUnitsList.Add(masterUnit);
+                }
+            }
+
+            return masterUnitsList;
+        }
+
 
     }
 
