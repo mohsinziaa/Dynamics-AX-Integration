@@ -5,7 +5,7 @@
 }
 
 <style>
-    .customer-form{
+    .customer-form {
         padding: 25px;
         box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
         border-radius: 10px;
@@ -17,42 +17,38 @@
     <div class="row mb-3">
         <div class="col">
             <label for="Name" class="form-label">Name</label>
-            <input type="text" class="form-control" id="Name" value="S&D" >
+            <input type="text" class="form-control" id="Name">
         </div>
-
         <div class="col">
             <label for="customerAccount" class="form-label">Customer Account</label>
-            <input type="text" class="form-control" id="customerAccount" value="CUST-001297" readonly>
+            <input type="text" class="form-control" id="customerAccount" readonly>
         </div>
     </div>
     <div class="mb-3">
         <label for="deliveryAddress" class="form-label">Delivery Address</label>
-        <textarea class="form-control" id="deliveryAddress" rows="2" readonly>Plot B1-A SITE Phase 1, M-9, Karachi, Pakistan</textarea>
+        <textarea class="form-control" id="deliveryAddress" rows="2" readonly></textarea>
     </div>
 
     <hr class="mt-5 mt-4" />
     <legend class="mt-2">General Information</legend>
-
     <div class="row mb-3">
         <div class="col">
             <label for="salesOrder" class="form-label">Sales Order</label>
             <input type="text" class="form-control" id="salesOrder" value="SO-138615" readonly>
         </div>
-
         <div class="col">
             <label for="podDate" class="form-label">Date Of POD</label>
-            <input type="date" class="form-control" id="podDate" >
+            <input type="date" class="form-control" id="podDate">
         </div>
-
         <div class="col">
             <label for="site" class="form-label">Site</label>
             <select class="form-select" id="site">
                 <option value="MATCO01">MATCO01</option>
                 <option value="MATCO02">MATCO02</option>
+                <option value="MATCO13" selected>MATCO13</option>
                 <option value="RIVIANA">RIVIANA</option>
             </select>
         </div>
-
         <div class="col">
             <label for="warehouse" class="form-label">Warehouse</label>
             <select class="form-select" id="warehouse">
@@ -61,41 +57,33 @@
                 <option value="WH-03">WH-03</option>
             </select>
         </div>
-
     </div>
 
     <div class="row mb-3">
-
         <div class="col">
             <label for="shippingTimezone" class="form-label">Shipping Location Timezone</label>
             <select class="form-select" id="shippingTimezone" readonly>
                 <option value="(GMT+05:00) Islamabad, Karachi, Tashkent">(GMT+05:00) Islamabad, Karachi, Tashkent</option>
             </select>
         </div>
-
     </div>
 
     <hr class="mt-5 mt-4" />
     <legend class="mt-2">References</legend>
-
     <div class="row mb-3">
-
         <div class="col-md-3">
             <label for="customerRequisition" class="form-label">Customer Requisition</label>
             <input type="text" class="form-control" id="customerRequisition">
         </div>
-
         <div class="col">
             <label for="reference" class="form-label">Reference</label>
             <input type="text" class="form-control" id="reference">
         </div>
-
     </div>
 
     <div class="d-flex justify-content-end mt-5">
         <button type="submit" class="btn btn-primary" id="createItemsBtn">Create Items</button>
     </div>
-
 </form>
 
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -105,25 +93,29 @@
     $(document).ready(function () {
         // Set default date to today's date
         $("#podDate").val(new Date().toISOString().split('T')[0]);
-        let accountName = $("#Name").val();
 
-         $.ajax({
-            url: "/Customer?handler=FetchCustomerData",
-            type: "GET",
-            data: { accountName: accountName },
-            success: function (response) {
-
-                $("#customerAccount").val() = response.customerAccount;
-                $("#deliveryAddress").val() = response.deliveryAddress;
-
-            },
-            error: function () {
-                alert("Error Fetching Customer Account!");
-            }
+        // Fetch customer data on blur instead of keydown
+        $("#Name").on("blur", function () {
+            fetchCustomerData();
         });
 
+        function fetchCustomerData() {
+            let customerName = $("#Name").val().trim();
+            if (!customerName) return;
+
+            $.get("/Customer?handler=FetchCustomerData", { customerName }, function (response) {
+                if (response && !response.error) {
+                    $("#customerAccount").val(response.customerAccount);
+                    $("#deliveryAddress").val(response.deliveryAddress);
+                } else {
+                    alert("Customer not found!");
+                }
+            }).fail(() => alert("Error Fetching Customer Account!"));
+        }
+
+        // Collect form data on button click
         $("#createItemsBtn").on("click", function (event) {
-            event.preventDefault(); // Prevent form submission
+            event.preventDefault();
 
             let customerData = {
                 name: $("#Name").val(),
@@ -138,7 +130,7 @@
                 reference: $("#reference").val()
             };
 
-            console.log(customerData); // Log data for debugging
+            console.log(customerData);
         });
     });
 </script>
