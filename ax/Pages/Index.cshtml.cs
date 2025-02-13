@@ -189,43 +189,56 @@ namespace ax.Pages
 
             return unitsList;
         }
-
-
-        public async Task<JsonResult> OnGetFetchMasterUnits(string itemNumber)
+        public async Task<JsonResult> OnGetFetchMasterUnitsAndQty(string itemNumber)
         {
             try
             {
-                var masterUnitsList = await FetchMasterUnitsAsync(itemNumber);
+                _logger.LogInformation($"Fetching master units and quantity for ItemNumber: {itemNumber}");
 
-                // If no master units are found, return an empty string
-                if (masterUnitsList.Count == 0)
+                var result = await FetchMasterUnitsAndQtyAsync(itemNumber);
+
+                // Log the fetched result
+                _logger.LogInformation($"Fetched Data - MasterUnits: {string.Join(", ", result.MasterUnits)}, MasterQty: {result.MasterQty}");
+
+                // If no master units are found, return an empty list and empty masterQty
+                return new JsonResult(new
                 {
-                    return new JsonResult(new { masterUnit = "" });
-                }
-
-                // Return the list of master units if available
-                return new JsonResult(masterUnitsList);
+                    masterUnits = result.MasterUnits,
+                    masterQty = result.MasterQty
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error fetching master units: {ex.Message}");
-                return new JsonResult(new { error = "An error occurred while fetching master units." });
+                _logger.LogError($"Error fetching master units and quantity: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching master units and quantity." });
             }
         }
 
-        private async Task<List<string>> FetchMasterUnitsAsync(string itemNumber)
+        private async Task<(List<string> MasterUnits, string MasterQty)> FetchMasterUnitsAndQtyAsync(string itemNumber)
         {
             var masterUnitsList = new List<string>();
+            string masterQty = "";
             string connString = _configuration.GetConnectionString("DefaultConnection");
+
+            _logger.LogInformation("Connecting to database...");
 
             await using var connection = new SqlConnection(connString);
             await connection.OpenAsync();
 
-            const string sql = "SELECT DISTINCT MASTERUNIT FROM SALESLINE WHERE ITEMID = @itemNumber AND MASTERUNIT <> ' '";
+            _logger.LogInformation("Database connected.");
+
+            const string sql = @"
+        SELECT DISTINCT MASTERUNIT, MASTERUNITQTY 
+        FROM SALESLINE 
+        WHERE ITEMID = @itemNumber AND MASTERUNIT <> ' '";
+
+            _logger.LogInformation($"Executing SQL Query: {sql} with ItemNumber: {itemNumber}");
+
             await using var command = new SqlCommand(sql, connection);
             command.Parameters.AddWithValue("@itemNumber", itemNumber);
 
             await using var reader = await command.ExecuteReaderAsync();
+
             while (await reader.ReadAsync())
             {
                 string masterUnit = reader["MASTERUNIT"].ToString();
@@ -233,9 +246,19 @@ namespace ax.Pages
                 {
                     masterUnitsList.Add(masterUnit);
                 }
+
+                // Assign MASTERUNITQTY (if not already assigned)
+                if (string.IsNullOrEmpty(masterQty) && reader["MASTERUNITQTY"] != DBNull.Value)
+                {
+                    masterQty = reader["MASTERUNITQTY"].ToString();
+                }
+
+                _logger.LogInformation($"Fetched Row - MasterUnit: {masterUnit}, MasterQty: {masterQty}");
             }
 
-            return masterUnitsList;
+            _logger.LogInformation($"Final Result - MasterUnits: {string.Join(", ", masterUnitsList)}, MasterQty: {masterQty}");
+
+            return (masterUnitsList, masterQty);
         }
 
 

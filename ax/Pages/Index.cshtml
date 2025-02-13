@@ -363,36 +363,6 @@
             }
         });
 
-        $("#generateSObtn").on("click", function () {
-            // console.log("SO button clicked");
-
-                let selectedItems = [];
-
-            $("#itemList tbody tr").each(function () {
-                let checkbox = $(this).find(".record-checkbox");
-
-                if (checkbox.prop("checked")) {
-                    let itemData = {
-                        itemNumber: $(this).find("td:eq(1)").text().trim(),
-                        itemName: $(this).find("td:eq(2)").text().trim(),
-                        site: $(this).find("select.site-dropdown").val(),
-                        warehouse: $(this).find("select.warehouse-dropdown").val(),
-                        location: $(this).find("select.location-dropdown").val(),
-                        unit: $(this).find("select.unit-dropdown").val(),
-                        quantity: $(this).find(".quantity-input").val().trim(),
-                        packingUnit: $(this).find("select.packing-unit-dropdown").val(),
-                        packingUnitQty: $(this).find(".packing-unit-qty-input").val().trim(),
-                        masterUnit: $(this).find("select.master-unit-dropdown").val(), 
-                        masterUnitQty: $(this).find(".master-unit-qty-input").val().trim()
-                    };
-                    selectedItems.push(itemData);
-                }
-            });
-
-        console.log("Selected Items:", selectedItems);
-        });
-
-
     if (customerData) {
         console.log(customerData);
         const custDetails = `${customerData.name} - ${customerData.customerAccount}`;
@@ -408,53 +378,98 @@
         row.find(".packing-unit-dropdown").val(selectedUnit).change(); 
     });
 
+
     // Copy Quantity to Packing Quantity on Tab
     $(document).on("keydown", ".quantity-input", function (e) {
         if (e.key === "Tab") {
             let row = $(this).closest("tr");
+            let masterUnitDropdown = row.find("select.master-unit-dropdown");
+            let masterQtyInput = row.find(".master-unit-qty-input");
             let quantityValue = $(this).val().trim();
-            row.find(".packing-unit-qty-input").val(quantityValue); 
-            let itemNumber = row.find("td:eq(1)").text().trim(); // Item Number (ITEMID)
+            row.find(".packing-unit-qty-input").val(quantityValue);
+            let itemNumber = row.find("td:eq(1)").text().trim();
 
-            // Fetch Master Units
+            // Fetch Master Units and Master Qty
             $.ajax({
-                url: "/Index?handler=FetchMasterUnits",
+                url: "/Index?handler=FetchMasterUnitsAndQty",
                 type: "GET",
                 data: { itemNumber: itemNumber },
                 success: function (response) {
-                    // Find the dropdown within the selected row
-                    let row = $("select.master-unit-dropdown").closest('tr'); // This assumes you're triggering the ajax on a specific row
 
-                    // Clear the dropdown first for the selected row
-                    let masterUnitDropdown = row.find("select.master-unit-dropdown");
-                    masterUnitDropdown.empty();
+                    console.log("API Response:", response); // Log entire response
+                    masterUnitDropdown.empty(); // Clear existing options
 
-                    // If the response contains master units
-                    if (response && response.length > 0) {
-                        // Populate dropdown with options
-                        response.forEach(unit => {
+                    // Populate Master Units dropdown if available
+                    if (response.masterUnits && response.masterUnits.length > 0) {
+                        response.masterUnits.forEach(unit => {
                             masterUnitDropdown.append(`<option value="${unit}">${unit}</option>`);
                         });
                     } else {
-                        // If no master units are found, add an empty option
-                        masterUnitDropdown.append('<option value=""></option>');
+                        masterUnitDropdown.append('<option value=""></option>'); // Empty option if no units
+                    }
+
+                    // Set Master Qty input field
+                    if (response.masterQty) {
+                        masterQtyInput.val(response.masterQty);
+                    } else {
+                        masterQtyInput.val(""); // Set empty if no quantity available
                     }
                 },
                 error: function () {
-                    alert("Error fetching units");
+                    alert("Error fetching master units and quantity");
                 },
             });
-
-
-
         }
     });
 
 
-    // Copy Unit to Packing Unit on Tab
-    $(document).on("change", ".master-unit-dropdown", function () {
-        console.log("Master Unit Dropdown Changed");
-    });
+        $("#generateSObtn").on("click", function () {
+            // console.log("SO button clicked");
+
+            let selectedItems = [];
+
+            $("#itemList tbody tr").each(function () {
+                let checkbox = $(this).find(".record-checkbox");
+
+                if (checkbox.prop("checked")) {
+                    let itemData = {
+                        itemNumber: $(this).find("td:eq(1)").text().trim(),
+                        itemName: $(this).find("td:eq(2)").text().trim(),
+                        site: $(this).find("select.site-dropdown").val(),
+                        warehouse: $(this).find("select.warehouse-dropdown").val(),
+                        location: $(this).find("select.location-dropdown").val(),
+                        unit: $(this).find("select.unit-dropdown").val(),
+                        quantity: $(this).find(".quantity-input").val().trim(),
+                        packingUnit: $(this).find("select.packing-unit-dropdown").val(),
+                        packingUnitQty: $(this).find(".packing-unit-qty-input").val().trim(),
+                        masterUnit: $(this).find("select.master-unit-dropdown").val(),
+                        masterUnitQty: $(this).find(".master-unit-qty-input").val().trim()
+                    };
+                    selectedItems.push(itemData);
+                }
+            });
+
+            // console.log("Selected Items:", selectedItems);
+            sessionStorage.setItem("itemsSelected", JSON.stringify(selectedItems));
+
+            let storedItems = sessionStorage.getItem("itemsSelected");
+
+            if (storedItems && sessionStorage.getItem("customerData") !== null) {
+                let itemsArray = JSON.parse(storedItems);
+
+                if (Array.isArray(itemsArray) && itemsArray.length > 0) {
+                    console.log("itemsSelected is set:", sessionStorage.getItem("itemsSelected"));
+                    console.log("customerData is set:", sessionStorage.getItem("customerData"));
+                } else {
+                    console.log("itemsSelected is empty, customerData is set!");
+                }
+            } else {
+                console.log("itemsSelected && customerData is NOT set.");
+            }
+
+        });
+
+
 
 
 
