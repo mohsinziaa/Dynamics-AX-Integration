@@ -11,6 +11,11 @@
         border-radius: 10px;
     }
 
+    .disabled-field {
+        pointer-events: none;
+        background-color: #f7f7f7; 
+    }
+
     .table thead {
         background-color: #005bff;
         color: white;
@@ -35,52 +40,38 @@
     <div class="row mb-3">
         <div class="col">
             <label for="Name" class="form-label">Name</label>
-            <input type="text" class="form-control" id="customerName">
+            <input type="text" class="form-control disabled-field" id="customerName">
         </div>
         <div class="col">
             <label for="customerAccount" class="form-label">Customer Account</label>
-            <input type="text" class="form-control" id="customerAccount">
+            <input type="text" class="form-control disabled-field" id="customerAccount">
         </div>
     </div>
     <div class="mb-3">
         <label for="deliveryAddress" class="form-label">Delivery Address</label>
-        <textarea class="form-control" id="deliveryAddress" rows="2"></textarea>
+        <textarea class="form-control disabled-field" id="deliveryAddress" rows="2"></textarea>
     </div>
 
     <div class="row mb-3">
         <div class="col">
             <label for="salesOrder" class="form-label">Sales Order</label>
-            <input type="text" class="form-control" id="salesOrder">
+            <input type="text" class="form-control disabled-field" id="salesOrder">
         </div>
         <div class="col">
             <label for="podDate" class="form-label">Date Of POD</label>
-            <input type="date" class="form-control" id="podDate">
+            <input type="date" class="form-control disabled-field" id="podDate">
         </div>
+
         <div class="col">
             <label for="site" class="form-label">Site</label>
-            <select class="form-select" id="site">
-                <option value="MATCO01">MATCO01</option>
-                <option value="MATCO02">MATCO02</option>
-                <option value="MATCO13">MATCO13</option>
-                <option value="RIVIANA">RIVIANA</option>
-                <option value="GODOWNS" selected>GODOWNS</option>
-            </select>
+            <input type="text" class="form-control disabled-field" id="site">
         </div>
+
         <div class="col">
             <label for="warehouse" class="form-label">Warehouse</label>
-            <select class="form-select" id="warehouse">
-                <option value="SD-Main">SD-Main</option>
-            </select>
+            <input type="text" class="form-control disabled-field" id="warehouse">
         </div>
-    </div>
 
-    <div class="row mb-3">
-        <div class="col">
-            <label for="shippingTimezone" class="form-label">Shipping Location Timezone</label>
-            <select class="form-select" id="shippingTimezone">
-                <option value="(GMT+05:00) Islamabad, Karachi, Tashkent">(GMT+05:00) Islamabad, Karachi, Tashkent</option>
-            </select>
-        </div>
     </div>
 
     <div class="row mb-3">
@@ -149,7 +140,6 @@
             $("#podDate").val(customerData.podDate);
             $("#site").val(customerData.site);
             $("#warehouse").val(customerData.warehouse);
-            $("#shippingTimezone").val(customerData.shippingTimezone);
             $("#customerRequisition").val(customerData.customerRequisition);
             $("#reference").val(customerData.reference);
 
@@ -199,8 +189,9 @@
             $("#generateOrders").hide();
         }
 
-        // On-click event for Generate Orders button
         $("#generateOrders").click(function () {
+
+            console.log("buttonClicked");
 
             let itemsArray = JSON.parse(storedItems);
             let customerData = JSON.parse(storedCustomerData);
@@ -211,24 +202,22 @@
                 items: itemsArray
             };
 
-            console.log(orderData);
+            console.log(orderData)
 
+            // Send the data to the controller via AJAX
             $.ajax({
-                url: "/Checkout?handler=Test",  
                 type: "POST",
+                url: "/Checkout?handler=CreateSalesOrder",
+                data: JSON.stringify(orderData),
                 contentType: "application/json",
+                dataType: "json",
                 success: function (response) {
-                    console.log("Success!");
+                    console.log(response.message);
                 },
-                error: function (xhr, status, error) {
-                    console.log("Error in sending data:", xhr.responseText);
-                    console.log("Status:", status);
-                    console.log("Errorr:", error); // Fix the typo (errorr -> error)
-                },
+                error: function (error) {
+                    console.log("Error in sending data:", error);
+                }
             });
-
-
-
         });
 
 
