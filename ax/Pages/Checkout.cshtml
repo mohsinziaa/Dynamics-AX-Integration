@@ -1,7 +1,238 @@
 ﻿@page
 @model ax.Pages.CheckoutModel
 @{
-	ViewData["Title"] = "Checkout";
+    ViewData["Title"] = "Checkout";
 }
 
-<h2>SO information will come here soon</h2>
+<style>
+    .outerContainer {
+        padding: 25px;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+    }
+
+    .table thead {
+        background-color: #005bff;
+        color: white;
+        white-space: nowrap;
+        font-weight: 400;
+        border-left: 2px solid #005bff;
+        border-top: 2px solid #005bff;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .table tr:last-of-type {
+        border-bottom: 2px solid #007bff;
+    }
+</style>
+
+<div class="outerContainer">
+
+    <h4 class="mb-3">Customer Information</h4>
+    <div class="row mb-3">
+        <div class="col">
+            <label for="Name" class="form-label">Name</label>
+            <input type="text" class="form-control" id="customerName">
+        </div>
+        <div class="col">
+            <label for="customerAccount" class="form-label">Customer Account</label>
+            <input type="text" class="form-control" id="customerAccount">
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="deliveryAddress" class="form-label">Delivery Address</label>
+        <textarea class="form-control" id="deliveryAddress" rows="2"></textarea>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col">
+            <label for="salesOrder" class="form-label">Sales Order</label>
+            <input type="text" class="form-control" id="salesOrder">
+        </div>
+        <div class="col">
+            <label for="podDate" class="form-label">Date Of POD</label>
+            <input type="date" class="form-control" id="podDate">
+        </div>
+        <div class="col">
+            <label for="site" class="form-label">Site</label>
+            <select class="form-select" id="site">
+                <option value="MATCO01">MATCO01</option>
+                <option value="MATCO02">MATCO02</option>
+                <option value="MATCO13">MATCO13</option>
+                <option value="RIVIANA">RIVIANA</option>
+                <option value="GODOWNS" selected>GODOWNS</option>
+            </select>
+        </div>
+        <div class="col">
+            <label for="warehouse" class="form-label">Warehouse</label>
+            <select class="form-select" id="warehouse">
+                <option value="SD-Main">SD-Main</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col">
+            <label for="shippingTimezone" class="form-label">Shipping Location Timezone</label>
+            <select class="form-select" id="shippingTimezone">
+                <option value="(GMT+05:00) Islamabad, Karachi, Tashkent">(GMT+05:00) Islamabad, Karachi, Tashkent</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label for="customerRequisition" class="form-label">Customer Requisition</label>
+            <input type="text" class="form-control" id="customerRequisition">
+        </div>
+        <div class="col">
+            <label for="reference" class="form-label">Reference</label>
+            <input type="text" class="form-control" id="reference">
+        </div>
+    </div>
+
+    <hr class="mt-4 mb-4" />
+
+    <h4 class="mb-3">Item Details</h4>
+
+    <!-- Item Table -->
+    <div class="table-responsive mb-3">
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">Item Number</th>
+                    <th scope="col">Site</th>
+                    <th scope="col">Warehouse</th>
+                    <th scope="col">Unit</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">PU</th>
+                    <th scope="col">PUQ</th>
+                    <th scope="col">MU</th>
+                    <th scope="col">MUQ</th>
+                </tr>
+            </thead>
+            <tbody id="itemsTableBody">
+                <!-- Item rows will be inserted here dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary" id="generateOrders">Generate Orders</button>
+    </div>
+
+</div>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+
+    $(document).ready(function () {
+        // Retrieve stored data from sessionStorage
+        let storedItems = sessionStorage.getItem("itemsSelected");
+        let storedCustomerData = sessionStorage.getItem("customerData");
+
+        // Check if both items and customer data are present in sessionStorage
+        if (storedItems && storedCustomerData !== null) {
+            let itemsArray = JSON.parse(storedItems);
+            let customerData = JSON.parse(storedCustomerData);
+
+            // Populate Customer Information
+            $("#customerName").val(customerData.name);
+            $("#customerAccount").val(customerData.customerAccount);
+            $("#deliveryAddress").val(customerData.deliveryAddress);
+            $("#salesOrder").val(customerData.salesOrder);
+            $("#podDate").val(customerData.podDate);
+            $("#site").val(customerData.site);
+            $("#warehouse").val(customerData.warehouse);
+            $("#shippingTimezone").val(customerData.shippingTimezone);
+            $("#customerRequisition").val(customerData.customerRequisition);
+            $("#reference").val(customerData.reference);
+
+            // Populate Item Details Table
+            if (Array.isArray(itemsArray) && itemsArray.length > 0) {
+                // Display Generate Orders Button if items are available
+                $("#generateOrders").show();
+
+                itemsArray.forEach(item => {
+                    $("#itemsTableBody").append(`
+                        <tr>
+                            <td>${item.itemNumber}</td>
+                            <td>${item.site}</td>
+                            <td>${item.warehouse}</td>
+                            <td>${item.unit}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.packingUnit}</td>
+                            <td>${item.packingUnitQty}</td>
+                            <td>${item.masterUnit}</td>
+                            <td>${item.masterUnitQty}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+
+                    $("#itemsTableBody").append(`
+                        <tr>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                    `);
+
+
+                // Hide Generate Orders Button if no items are available
+                $("#generateOrders").hide();
+            }
+        } else {
+            console.log("Items or Customer Data not found in sessionStorage.");
+            // Hide the Generate Orders Button if no items are available
+            $("#generateOrders").hide();
+        }
+
+        // On-click event for Generate Orders button
+        $("#generateOrders").click(function () {
+
+            let itemsArray = JSON.parse(storedItems);
+            let customerData = JSON.parse(storedCustomerData);
+
+            // Prepare the data to send
+            let orderData = {
+                customer: customerData,
+                items: itemsArray
+            };
+
+            console.log(orderData);
+
+            $.ajax({
+                url: "/Checkout?handler=Test",  
+                type: "POST",
+                contentType: "application/json",
+                success: function (response) {
+                    console.log("Success!");
+                },
+                error: function (xhr, status, error) {
+                    console.log("Error in sending data:", xhr.responseText);
+                    console.log("Status:", status);
+                    console.log("Errorr:", error); // Fix the typo (errorr -> error)
+                },
+            });
+
+
+
+        });
+
+
+    });
+
+
+</script>
