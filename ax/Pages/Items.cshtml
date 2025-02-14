@@ -1,0 +1,479 @@
+﻿@page
+@model ItemsModel
+@{
+    ViewData["Title"] = "SO - Integration";
+}
+
+<style>
+
+    body {
+        overflow: hidden;
+    }
+
+    .table-container {
+        max-height: 400px;
+        overflow-y: auto;
+        overflow-x: auto;
+        display: block;
+        white-space: nowrap;
+        position: relative;
+    }
+
+    .table th {
+        background-color: #007bff;
+        color: white;
+        white-space: nowrap;
+        font-weight: 400;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+        .table td:first-child, .table th:first-child {
+            white-space: nowrap;
+        }
+
+    .table th:first-child {
+        border-top-left-radius: 10px;
+    }
+
+    .table th:last-child {
+        border-top-right-radius: 10px;
+    }
+
+    .table tr:last-of-type {
+        border-bottom: 2px solid #007bff;
+    }
+
+    .search-container {
+        margin-bottom: 15px;
+        text-align: left;
+    }
+
+        .search-container .form-control {
+            width: 300px;
+            margin-right: 10px;
+        }
+
+        .search-container .btn {
+            margin-top: 0;
+        }
+
+    .table input[type='text'] {
+        width: 100px;
+    }
+
+    .table select {
+        width: 140px;
+    }
+
+</style>
+
+<div class="search-container d-flex justify-content-between align-items-center">
+    <input type="text" class="form-control w-25" id="customerDetails" readonly>
+    <div class="d-flex ms-auto">
+        <input type="text" id="itemSearch" class="form-control me-2" placeholder="Search by Item Name" autocomplete="off">
+        <button id="searchButton" class="btn btn-primary">Search</button>
+    </div>
+</div>
+
+<div class="table-container">
+
+    <table id="itemList" class="table table-hover">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">
+                    <input type="checkbox" id="selectAll" class="form-check-input">
+                </th>
+                <th scope="col">Item Number</th>
+                <th scope="col">Item Name</th>
+                <th scope="col">Site</th>
+                <th scope="col">Warehouse</th>
+                <th scope="col">Location</th>
+                <th scope="col">Unit</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Packing Unit</th>
+                <th scope="col">Packing Qty</th>
+                <th scope="col">Master Unit</th>
+                <th scope="col">Master Qty</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.ItemsList)
+            {
+                <tr>
+                    <td>
+                        <input type="checkbox" class="form-check-input record-checkbox">
+                    </td>
+                    <td>@item.itemNumber</td>
+                    <td>@item.itemName</td>
+                    <td>
+                        <select class="form-select site-dropdown">
+                            <option>MATCO01</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select warehouse-dropdown">
+                            <option value="Dock-01">Dock-01</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select location-dropdown">
+                            <option value="0001">0001</option>
+                        </select>
+                    </td>
+
+                    <td>
+                        <select class="form-select unit-dropdown">
+                            <option value="KG">KG</option>
+                            <option value="Pcs">Pcs</option>
+                            <option value="Ton">Ton</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control quantity-input" min="1">
+                    </td>
+
+                    <td>
+                        <select class="form-select packing-unit-dropdown">
+                            <option value="KG">KG</option>
+                            <option value="Pcs">Pcs</option>
+                            <option value="Ton">Ton</option>
+                        </select>
+                    </td>
+
+                    <td>
+                        <input type="text" class="form-control packing-unit-qty-input" min="1">
+                    </td>
+
+                    <td>
+                        <select class="form-select master-unit-dropdown">
+                            <option value="" selected></option>
+                        </select>
+                    </td>
+
+                    <td>
+                        <input type="text" class="form-control master-unit-qty-input" min="1">
+                    </td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+
+</div>
+
+
+
+<div class="d-flex justify-content-end mt-5">
+    <button type="submit" class="btn btn-primary w-auto" id="generateSObtn">Generate Sales Order</button>
+</div>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+
+        // Fetch customer data from sessionStorage
+        const customerData = JSON.parse(sessionStorage.getItem("customerData"));
+
+        // Fetch sites and populate site dropdown
+        $.ajax({
+            url: "/Items?handler=FetchSites",
+            type: "GET",
+            success: function (response) {
+                let siteDropdowns = $("select.site-dropdown");
+                siteDropdowns.empty();
+
+                response.forEach(site => {
+                    siteDropdowns.append(`<option value="${site}">${site}</option>`);
+                });
+
+                // Check if customerData.site exists and select it
+                const customerSite = customerData?.site;
+                if (customerSite) {
+                    siteDropdowns.each(function () {
+                        $(this).val(customerSite).change();
+                    });
+                }
+
+            },
+            error: function () {
+                alert("Error fetching sites");
+            },
+        });
+
+
+        // Fetch Units
+        $.ajax({
+            url: "/Items?handler=FetchUnits",
+            type: "GET",
+            success: function (response) {
+                let unitDropdowns = $("select.unit-dropdown");
+                unitDropdowns.empty();
+
+                let packingUnitDropdowns = $("select.packing-unit-dropdown");
+                packingUnitDropdowns.empty();
+
+
+                response.forEach(unit => {
+                    unitDropdowns.append(`<option value="${unit}">${unit}</option>`);
+                    packingUnitDropdowns.append(`<option value="${unit}">${unit}</option>`);
+                });
+
+            },
+            error: function () {
+                alert("Error fetching units");
+            },
+        });
+
+        // Event listener for site selection change
+        $("select.site-dropdown").on('change', function () {
+            updateWarehouses($(this).val(), $(this));
+        });
+
+        // Function to update warehouses based on selected site
+        function updateWarehouses(siteName, siteDropdown) {
+            if (!siteName) return;
+
+            $.ajax({
+                url: "/Items?handler=FetchWarehouses",
+                type: "GET",
+                data: { siteName: siteName },
+                success: function (response) {
+                    let row = siteDropdown.closest('tr');
+                    let warehouseDropdown = row.find("select.warehouse-dropdown");
+
+                    warehouseDropdown.empty();
+                    response.forEach(function (warehouse) {
+                        warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
+                    });
+
+
+                    const customerWarehouse = customerData?.warehouse;
+
+                    if(customerData.warehouse){
+                        warehouseDropdown.each(function () {
+                            $(this).val(customerWarehouse).change();
+                        });
+                        warehouseDropdown.val(customerWarehouse);
+                        updateLocations(customerWarehouse, row);
+                    }
+                },
+                error: function () {
+                    alert("Error fetching warehouses");
+                }
+            });
+        }
+
+        // Event listener for warehouse selection change
+        $("select.warehouse-dropdown").on('change', function () {
+            updateLocations($(this).val(), $(this));
+        });
+
+        // Function to update locations based on selected warehouse
+        function updateLocations(warehouseName, warehouseDropdown) {
+            if (!warehouseName) return;
+
+            let row = warehouseDropdown.closest('tr');
+            let siteName = row.find("select.site-dropdown").val();
+
+            $.ajax({
+                url: "/Items?handler=FetchLocations",
+                type: "GET",
+                data: { warehouseName: warehouseName, siteName: siteName },
+                success: function (response) {
+                    let locationDropdown = row.find("select.location-dropdown");
+
+                    locationDropdown.empty();
+                    response.forEach(function (location) {
+                        locationDropdown.append(`<option value="${location}">${location}</option>`);
+                    });
+
+                    if (response.length > 0) {
+                        locationDropdown.val(response[0]);
+                    }
+                },
+                error: function () {
+                    alert("Error fetching locations");
+                }
+            });
+        }
+
+        // Trigger search on pressing Enter
+        $("#itemSearch").on("keypress", function (e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                $("#searchButton").click();
+            }
+        });
+
+        // Search functionality
+        $("#searchButton").on("click", function () {
+            let searchQuery = $("#itemSearch").val().toLowerCase();
+            if (!searchQuery) {
+                $("#generateSObtn").show();
+                $("#itemList tr").show();
+                $("#noRecordsMessage").remove();
+                return;
+            }
+
+            let foundMatch = false;
+            $("#generateSObtn").hide();
+
+            $("#itemList tbody tr").each(function () {
+
+                let itemName = $(this).find("td:eq(2)").text().toLowerCase();
+
+                if (itemName.includes(searchQuery)) {
+                    $(this).show();
+                    foundMatch = true;
+                } else {
+                    $(this).hide();
+                }
+            });
+
+            if (!foundMatch) {
+                if ($("#noRecordsMessage").length === 0) {
+                    const messageRow = `<tr id="noRecordsMessage">
+                                            <td colspan="5" class="text-center text-danger">No records found</td>
+                                          </tr>`;
+                    $("#itemList tbody").append(messageRow);
+                }
+            } else {
+                $("#noRecordsMessage").remove();
+            }
+        });
+
+        // Select all checkboxes when the header checkbox is clicked
+        $("#selectAll").on("click", function () {
+            $(".record-checkbox").prop("checked", $(this).prop("checked"));
+
+        });
+
+        // Uncheck "Select All" if any individual checkbox is unchecked
+        $(document).on("click", ".record-checkbox", function () {
+            if (!$(this).prop("checked")) {
+                $("#selectAll").prop("checked", false);
+            } else if ($(".record-checkbox:checked").length === $(".record-checkbox").length) {
+                $("#selectAll").prop("checked", true);
+            }
+        });
+
+    if (customerData) {
+        console.log(customerData);
+        const custDetails = `${customerData.name} - ${customerData.customerAccount}`;
+        $("#customerDetails").val(custDetails);
+
+    }
+
+
+    // Copy Unit to Packing Unit on Tab
+    $(document).on("change", ".unit-dropdown", function () {
+        let row = $(this).closest("tr");
+        let selectedUnit = $(this).val();
+        row.find(".packing-unit-dropdown").val(selectedUnit).change();
+    });
+
+
+    // Copy Quantity to Packing Quantity on Tab
+    $(document).on("keydown", ".quantity-input", function (e) {
+        if (e.key === "Tab") {
+            let row = $(this).closest("tr");
+            let masterUnitDropdown = row.find("select.master-unit-dropdown");
+            let masterQtyInput = row.find(".master-unit-qty-input");
+            let quantityValue = $(this).val().trim();
+            row.find(".packing-unit-qty-input").val(quantityValue);
+            let itemNumber = row.find("td:eq(1)").text().trim();
+
+            // Fetch Master Units and Master Qty
+            $.ajax({
+                url: "/Items?handler=FetchMasterUnitsAndQty",
+                type: "GET",
+                data: { itemNumber: itemNumber },
+                success: function (response) {
+
+                    console.log("API Response:", response); // Log entire response
+                    masterUnitDropdown.empty(); // Clear existing options
+
+                    // Populate Master Units dropdown if available
+                    if (response.masterUnits && response.masterUnits.length > 0) {
+                        response.masterUnits.forEach(unit => {
+                            masterUnitDropdown.append(`<option value="${unit}">${unit}</option>`);
+                        });
+                    } else {
+                        masterUnitDropdown.append('<option value=""></option>'); // Empty option if no units
+                    }
+
+                    // Set Master Qty input field
+                    if (response.masterQty) {
+                        masterQtyInput.val(response.masterQty);
+                    } else {
+                        masterQtyInput.val(""); // Set empty if no quantity available
+                    }
+                },
+                error: function () {
+                    alert("Error fetching master units and quantity");
+                },
+            });
+        }
+    });
+
+
+        $("#generateSObtn").on("click", function () {
+            // console.log("SO button clicked");
+
+            let selectedItems = [];
+
+            $("#itemList tbody tr").each(function () {
+                let checkbox = $(this).find(".record-checkbox");
+
+                if (checkbox.prop("checked")) {
+                    let itemData = {
+                        itemNumber: $(this).find("td:eq(1)").text().trim(),
+                        itemName: $(this).find("td:eq(2)").text().trim(),
+                        site: $(this).find("select.site-dropdown").val(),
+                        warehouse: $(this).find("select.warehouse-dropdown").val(),
+                        location: $(this).find("select.location-dropdown").val(),
+                        unit: $(this).find("select.unit-dropdown").val(),
+                        quantity: $(this).find(".quantity-input").val().trim(),
+                        packingUnit: $(this).find("select.packing-unit-dropdown").val(),
+                        packingUnitQty: $(this).find(".packing-unit-qty-input").val().trim(),
+                        masterUnit: $(this).find("select.master-unit-dropdown").val(),
+                        masterUnitQty: $(this).find(".master-unit-qty-input").val().trim()
+                    };
+                    selectedItems.push(itemData);
+                }
+            });
+
+            // console.log("Selected Items:", selectedItems);
+            sessionStorage.setItem("itemsSelected", JSON.stringify(selectedItems));
+
+            let storedItems = sessionStorage.getItem("itemsSelected");
+
+            if (storedItems && sessionStorage.getItem("customerData") !== null) {
+                let itemsArray = JSON.parse(storedItems);
+
+                if (Array.isArray(itemsArray) && itemsArray.length > 0) {
+                    console.log("itemsSelected is set:", sessionStorage.getItem("itemsSelected"));
+                    console.log("customerData is set:", sessionStorage.getItem("customerData"));
+                } else {
+                    console.log("itemsSelected is empty, customerData is set!");
+                }
+            } else {
+                console.log("itemsSelected && customerData is NOT set.");
+            }
+
+            window.location.href = "/Checkout";
+        });
+
+
+
+
+
+    });
+</script>

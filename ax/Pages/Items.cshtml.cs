@@ -1,0 +1,273 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using System.Data.SqlClient;
+
+namespace ax.Pages
+{
+    public class ItemsModel : PageModel
+    {
+        private readonly ILogger<ItemsModel> _logger;
+        private readonly IConfiguration _configuration;
+
+        public List<itemInfo> ItemsList { get; private set; } = new List<itemInfo>();
+        public List<string> SiteList { get; private set; } = new List<string>();
+
+        public ItemsModel(ILogger<ItemsModel> logger, IConfiguration configuration)
+        {
+            _logger = logger;
+            _configuration = configuration;
+        }
+
+        public async Task OnGetAsync()
+        {
+            try
+            {
+                string connString = _configuration.GetConnectionString("DefaultConnection");
+                await using var connection = new SqlConnection(connString);
+                await connection.OpenAsync();
+
+                _logger.LogInformation("Connection Established Successfully!");
+
+                // Retrieve items
+                await FetchItemsAsync(connection);
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Database Connection Failed! Error: {ex.Message}");
+            }
+        }
+
+        private async Task FetchItemsAsync(SqlConnection connection)
+        {
+            const string sql = "SELECT ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
+            await using var command = new SqlCommand(sql, connection);
+            await using var reader = await command.ExecuteReaderAsync();
+
+            ItemsList.Clear(); // Clear existing data before adding new items
+
+            while (await reader.ReadAsync())
+            {
+                var item = new itemInfo
+                {
+                    itemNumber = reader["ITEMID"].ToString() ?? string.Empty,
+                    itemName = reader["ITEMNAME"].ToString() ?? string.Empty
+                };
+                ItemsList.Add(item);
+            }
+        }
+
+        // AJAX Handler for Fetching Sites
+        public JsonResult OnGetFetchSites()
+        {
+            // Set SiteList after fetching items
+            SiteList = new List<string> { "MATCO01", "MATCO02", "MATCO13", "RIVIANA", "GODOWNS" };
+            return new JsonResult(SiteList);
+        }
+
+        public async Task<JsonResult> OnGetFetchWarehouses(string siteName)
+        {
+            try
+            {
+                var warehousesList = await FetchWarehousesAsync(siteName);
+                return new JsonResult(warehousesList);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching warehouses: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching warehouses." });
+            }
+        }
+
+        private async Task<List<string>> FetchWarehousesAsync(string siteName)
+        {
+            var warehousesList = new List<string>();
+            string connString = _configuration.GetConnectionString("DefaultConnection");
+
+            await using var connection = new SqlConnection(connString);
+            await connection.OpenAsync();
+
+            const string sql = "SELECT DISTINCT INVENTLOCATIONID FROM InventDim WHERE INVENTSITEID = @SiteName AND INVENTLOCATIONID <> ' '";
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@SiteName", siteName);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                string warehouse = reader["INVENTLOCATIONID"].ToString();
+                if (!string.IsNullOrEmpty(warehouse))
+                {
+                    warehousesList.Add(warehouse);
+                }
+            }
+
+            return warehousesList;
+        }
+
+        public async Task<JsonResult> OnGetFetchLocations(string siteName, string warehouseName)
+        {
+            try
+            {
+                var locationsList = await FetchLocationsAsync(siteName, warehouseName);
+                return new JsonResult(locationsList);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching locations: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching locations." });
+            }
+        }
+
+        private async Task<List<string>> FetchLocationsAsync(string siteName, string warehouseName)
+        {
+            var locationsList = new List<string>();
+            string connString = _configuration.GetConnectionString("DefaultConnection");
+
+            await using var connection = new SqlConnection(connString);
+            await connection.OpenAsync();
+
+            const string sql = @"
+                SELECT DISTINCT WMSLOCATIONID 
+                FROM INVENTDIM 
+                WHERE INVENTSITEID = @SiteName 
+                  AND INVENTLOCATIONID = @WarehouseName 
+                  AND LTRIM(RTRIM(WMSLOCATIONID)) <> ''";
+
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@SiteName", siteName);
+            command.Parameters.AddWithValue("@WarehouseName", warehouseName);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                string location = reader["WMSLOCATIONID"].ToString();
+                if (!string.IsNullOrEmpty(location))
+                {
+                    locationsList.Add(location);
+                }
+            }
+
+            return locationsList;
+        }
+
+
+        public async Task<JsonResult> OnGetFetchUnits()
+        {
+            try
+            {
+                var unitsList = await FetchUnitsAsync();
+                return new JsonResult(unitsList);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching warehouses: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching units." });
+            }
+        }
+
+        private async Task<List<string>> FetchUnitsAsync()
+        {
+            var unitsList = new List<string>();
+            string connString = _configuration.GetConnectionString("DefaultConnection");
+
+            await using var connection = new SqlConnection(connString);
+            await connection.OpenAsync();
+
+            const string sql = "SELECT DISTINCT SALESUNIT FROM SALESLINE WHERE SALESUNIT <> ' '";
+            await using var command = new SqlCommand(sql, connection);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                string unit = reader["SALESUNIT"].ToString();
+                if (!string.IsNullOrEmpty(unit))
+                {
+                    unitsList.Add(unit);
+                }
+            }
+
+            return unitsList;
+        }
+        public async Task<JsonResult> OnGetFetchMasterUnitsAndQty(string itemNumber)
+        {
+            try
+            {
+                _logger.LogInformation($"Fetching master units and quantity for ItemNumber: {itemNumber}");
+
+                var result = await FetchMasterUnitsAndQtyAsync(itemNumber);
+
+                // Log the fetched result
+                _logger.LogInformation($"Fetched Data - MasterUnits: {string.Join(", ", result.MasterUnits)}, MasterQty: {result.MasterQty}");
+
+                // If no master units are found, return an empty list and empty masterQty
+                return new JsonResult(new
+                {
+                    masterUnits = result.MasterUnits,
+                    masterQty = result.MasterQty
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching master units and quantity: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching master units and quantity." });
+            }
+        }
+
+        private async Task<(List<string> MasterUnits, string MasterQty)> FetchMasterUnitsAndQtyAsync(string itemNumber)
+        {
+            var masterUnitsList = new List<string>();
+            string masterQty = "";
+            string connString = _configuration.GetConnectionString("DefaultConnection");
+
+            _logger.LogInformation("Connecting to database...");
+
+            await using var connection = new SqlConnection(connString);
+            await connection.OpenAsync();
+
+            _logger.LogInformation("Database connected.");
+
+            const string sql = @"
+        SELECT DISTINCT MASTERUNIT, MASTERUNITQTY 
+        FROM SALESLINE 
+        WHERE ITEMID = @itemNumber AND MASTERUNIT <> ' '";
+
+            _logger.LogInformation($"Executing SQL Query: {sql} with ItemNumber: {itemNumber}");
+
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@itemNumber", itemNumber);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                string masterUnit = reader["MASTERUNIT"].ToString();
+                if (!string.IsNullOrEmpty(masterUnit))
+                {
+                    masterUnitsList.Add(masterUnit);
+                }
+
+                // Assign MASTERUNITQTY (if not already assigned)
+                if (string.IsNullOrEmpty(masterQty) && reader["MASTERUNITQTY"] != DBNull.Value)
+                {
+                    masterQty = reader["MASTERUNITQTY"].ToString();
+                }
+
+                _logger.LogInformation($"Fetched Row - MasterUnit: {masterUnit}, MasterQty: {masterQty}");
+            }
+
+            _logger.LogInformation($"Final Result - MasterUnits: {string.Join(", ", masterUnitsList)}, MasterQty: {masterQty}");
+
+            return (masterUnitsList, masterQty);
+        }
+
+
+    }
+
+    public class itemInfo
+    {
+        public string itemNumber { get; set; } = string.Empty;
+        public string itemName { get; set; } = string.Empty;
+    }
+}
