@@ -66,52 +66,88 @@ namespace ax.Pages
             return new JsonResult(new { message = "Order data received successfully." });
         }
 
+
         private async Task InsertCustomerDataAsync(CustomerData customer)
         {
             try
             {
-                const string insertQuery = @"
-                    INSERT INTO [MATCOAX].[dbo].[SALESTABLE]
-                        (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,	
-                        SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,	
-                        CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
-                        PURCHORDERFORMNUM, REFJOURNALID, RECID, DATAAREAID)
-                    VALUES
-                        (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
-                        @SalesType, @RecieptDateRequested, @ShippingDateRequested,
-                        @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
-                        @PurchOrderFormNum, @RefJournalID, @RecID, @DataAreaID)";
+                // Log the start of the method execution
+                _logger.LogInformation("Started inserting customer data for Customer: {CustomerName}, Account: {CustomerAccount}", customer.Name, customer.CustomerAccount);
 
-                var parameters = new Dictionary<string, object>
-                {
-                    { "@SalesId", "102" },
-                    { "@SalesName", customer.Name },
-                    { "@CustAccount", customer.CustomerAccount },
-                    { "@DeliverAddress", customer.DeliveryAddress },
-                    { "@InvoiceAccount", customer.CustomerAccount },
-                    { "@SalesType", 1 },
-                    { "@RecieptDateRequested", customer.PodDate },
-                    { "@ShippingDateRequested", customer.PodDate },
-                    { "@CurrencyCode", "PKR" },
-                    { "@DlvMode", "Road" },
-                    { "@InventSiteID", customer.Site },
-                    { "@InventLocationID", customer.Warehouse },
-                    { "@PurchOrderFormNum", customer.Reference },
-                    { "@RefJournalID", customer.Reference },
-                    { "@RecID", 102 }, // Generate unique RecID if needed
-                    { "@DataAreaID", "mrp" }
-                };
+                // Fetch the next SalesID using ExecuteQueryAsync
+                string fetchSalesIdQuery = @"
+                                            SELECT NEXTREC 
+                                            FROM NUMBERSEQUENCETABLE 
+                                            WHERE FORMAT LIKE 'SO-%' AND DATAAREAID = 'mrp'";
 
-                // Execute query using DatabaseService
-                await _dbService.ExecuteNonQueryAsync(insertQuery, parameters);
+                var parameters = new Dictionary<string, object>();
 
-                _logger.LogInformation("Customer data inserted successfully.");
+                _logger.LogInformation("Executing query to fetch the next SalesID.");
+
+                // Execute the query and fetch the first column as an integer
+                var result = await _dbService.ExecuteQueryAsync<int>(
+                    fetchSalesIdQuery,
+                    reader => reader.GetInt32(0), // Extract the first column as INT
+                    parameters
+                );
+
+                int salesId = result.Count > 0 ? result[0] : 1682; // Default to 1682 if null
+                _logger.LogInformation("Fetched SalesID: {SalesID}", salesId);
+
+                // Increment the SalesID in NUMBERSEQUENCETABLE
+                string updateSalesIdQuery = @"
+                                            UPDATE NUMBERSEQUENCETABLE
+                                            SET NEXTREC = CAST(CAST(NEXTREC AS INT) + 1 AS VARCHAR)
+                                            WHERE FORMAT LIKE 'SO-%' AND DATAAREAID = 'mrp'";
+
+                _logger.LogInformation("Executing query to increment the SalesID in NUMBERSEQUENCETABLE.");
+                await _dbService.ExecuteNonQueryAsync(updateSalesIdQuery);
+                _logger.LogInformation("SalesID successfully incremented in NUMBERSEQUENCETABLE.");
+
+                // Insert customer data into SALESTABLE
+                string insertQuery = @"
+                                    INSERT INTO [MATCOAX].[dbo].[SALESTABLE]
+                                        (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,	
+                                        SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,	
+                                        CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
+                                        PURCHORDERFORMNUM, REFJOURNALID, RECID, DATAAREAID)
+                                    VALUES
+                                        (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
+                                        @SalesType, @RecieptDateRequested, @ShippingDateRequested,
+                                        @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
+                                        @PurchOrderFormNum, @RefJournalID, @RecID, @DataAreaID)";
+
+                _logger.LogInformation("Executing query to insert customer data into SALESTABLE.");
+
+                var parametersForInsert = new Dictionary<string, object>
+        {
+            { "@SalesId", "SO-" + salesId.ToString() },
+            { "@SalesName", customer.Name },
+            { "@CustAccount", customer.CustomerAccount },
+            { "@DeliverAddress", customer.DeliveryAddress },
+            { "@InvoiceAccount", customer.CustomerAccount },
+            { "@SalesType", 3 },
+            { "@RecieptDateRequested", customer.PodDate },
+            { "@ShippingDateRequested", customer.PodDate },
+            { "@CurrencyCode", "PKR" },
+            { "@DlvMode", "Road" },
+            { "@InventSiteID", customer.Site },
+            { "@InventLocationID", customer.Warehouse },
+            { "@PurchOrderFormNum", customer.Reference },
+            { "@RefJournalID", customer.Reference },
+            { "@RecID", salesId }, // Using SalesID as RecID for now
+            { "@DataAreaID", "mrp" }
+        };
+
+                await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
+                _logger.LogInformation("Customer data inserted successfully with SalesID: {SalesID}", salesId);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error inserting customer data: {ex.Message}");
+                _logger.LogError($"Error inserting customer data: {ex.Message}", ex);
             }
         }
+
     }
 
     public class OrderData
@@ -133,7 +169,6 @@ namespace ax.Pages
         public string Site { get; set; } = string.Empty;
         public string Warehouse { get; set; } = string.Empty;
     }
-
     public class ItemData
     {
         public string ItemName { get; set; } = string.Empty;
