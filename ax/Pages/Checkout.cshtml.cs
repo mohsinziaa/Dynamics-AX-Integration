@@ -76,24 +76,33 @@ namespace ax.Pages
 
                 string insertQuery = @"
                     INSERT INTO [MATCOAX].[dbo].[SALESTABLE]
-                        ([SALESID], [SALESNAME], [RECID], [DATAAREAID], [CUSTACCOUNT])
+                        (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,	
+                        SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,	
+                        CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
+                        PURCHORDERFORMNUM, REFJOURNALID, RECID, DATAAREAID)
                     VALUES
-                        (@SalesId, @SalesName, @RecId, @DataAreaId, @CustomerAccount)";
+                        (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
+                        @SalesType, @RecieptDateRequested, @ShippingDateRequested,
+                        @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
+                        @PurchOrderFormNum, @RefJournalID, @RecID, @DataAreaID)";                        
 
                 await using var command = new SqlCommand(insertQuery, connection);
-                command.Parameters.AddWithValue("@SalesId", "100"); 
-                command.Parameters.AddWithValue("@SalesName", customer.Name); 
-                command.Parameters.AddWithValue("@RecId", 100); 
-                command.Parameters.AddWithValue("@DataAreaId", "mrp"); 
-                command.Parameters.AddWithValue("@CustomerAccount", customer.CustomerAccount);
-                //command.Parameters.AddWithValue("@Name", customer.Name);
-                //command.Parameters.AddWithValue("@DeliveryAddress", customer.DeliveryAddress);
-                //command.Parameters.AddWithValue("@PodDate", customer.PodDate);
-                //command.Parameters.AddWithValue("@Reference", customer.Reference);
-                //command.Parameters.AddWithValue("@ShippingTimezone", customer.ShippingTimezone);
-                //command.Parameters.AddWithValue("@Site", customer.Site);
-                //command.Parameters.AddWithValue("@Warehouse", customer.Warehouse);
-
+                command.Parameters.AddWithValue("@SalesId", "101"); 
+                command.Parameters.AddWithValue("@SalesName", customer.Name);
+                command.Parameters.AddWithValue("@CustAccount", customer.CustomerAccount);
+                command.Parameters.AddWithValue("@DeliverAddress", customer.DeliveryAddress);
+                command.Parameters.AddWithValue("@InvoiceAccount", customer.CustomerAccount); 
+                command.Parameters.AddWithValue("@SalesType", 1); // Default value (modify as needed)
+                command.Parameters.AddWithValue("@RecieptDateRequested", customer.PodDate);
+                command.Parameters.AddWithValue("@ShippingDateRequested", customer.PodDate); 
+                command.Parameters.AddWithValue("@CurrencyCode", "PKR"); 
+                command.Parameters.AddWithValue("@DlvMode", "Road");
+                command.Parameters.AddWithValue("@InventSiteID", customer.Site);
+                command.Parameters.AddWithValue("@InventLocationID", customer.Warehouse);
+                command.Parameters.AddWithValue("@PurchOrderFormNum", customer.Reference);
+                command.Parameters.AddWithValue("@RefJournalID", customer.Reference);
+                command.Parameters.AddWithValue("@RecID", 101); // Generate unique RecID if needed
+                command.Parameters.AddWithValue("@DataAreaID", "mrp");
                 await command.ExecuteNonQueryAsync();
 
                 _logger.LogInformation("Customer data inserted successfully.");
