@@ -27,7 +27,7 @@ namespace ax.Pages
             {
                 _logger.LogInformation("Fetching items from the database...");
                 var items = await _dbService.ExecuteQueryAsync<itemInfo>(
-                    "SELECT TOP 5 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
+                    "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
                     reader => new itemInfo
                     {
                         itemNumber = reader["ITEMID"].ToString() ?? string.Empty,
@@ -133,11 +133,11 @@ namespace ax.Pages
 
         private async Task<List<string>> FetchUnitsAsync()
         {
-            const string sql = "SELECT DISTINCT SALESUNIT FROM SALESLINE WHERE SALESUNIT <> ' '";
+            const string sql = "SELECT DISTINCT UNITID FROM UNIT WHERE UNITID <> ' '";
 
             var unitsList = await _dbService.ExecuteQueryAsync<string>(
                 sql,
-                reader => reader["SALESUNIT"].ToString());
+                reader => reader["UNITID"].ToString());
 
             return unitsList;
         }
@@ -148,53 +148,57 @@ namespace ax.Pages
             {
                 _logger.LogInformation($"Fetching master units and quantity for ItemNumber: {itemNumber}");
 
+                // Fetch data from MASTERBAGSDETAIL and return the result
                 var result = await FetchMasterUnitsAndQtyAsync(itemNumber);
 
-                _logger.LogInformation($"Fetched Data - MasterUnits: {string.Join(", ", result.MasterUnits)}, MasterQty: {result.MasterQty}");
+                _logger.LogInformation($"Fetched Data - MasterUnit: {result.MasterUnit}, MasterQty: {result.MasterQty}");
 
                 return new JsonResult(new
                 {
-                    masterUnits = result.MasterUnits,
+                    masterUnit = result.MasterUnit,
                     masterQty = result.MasterQty
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error fetching master units and quantity: {ex.Message}");
-                return new JsonResult(new { error = "An error occurred while fetching master units and quantity." });
+                _logger.LogError($"Error fetching master unit and quantity: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching master unit and quantity." });
             }
         }
 
-        private async Task<(List<string> MasterUnits, string MasterQty)> FetchMasterUnitsAndQtyAsync(string itemNumber)
+        private async Task<(string MasterUnit, string MasterQty)> FetchMasterUnitsAndQtyAsync(string itemNumber)
         {
             const string sql = @"
-                SELECT DISTINCT MASTERUNIT, MASTERUNITQTY 
-                FROM SALESLINE 
-                WHERE ITEMID = @itemNumber AND MASTERUNIT <> ' '";
+        SELECT MASTERBAGUNIT, MASTERBAGQTYFACTOR 
+        FROM MASTERBAGSDETAIL 
+        WHERE ITEMID = @itemNumber";
 
             var parameters = new Dictionary<string, object>
-            {
-                { "@itemNumber", itemNumber }
-            };
+    {
+        { "@itemNumber", itemNumber }
+    };
 
+            // Fetch the result from MASTERBAGSDETAIL table
             var result = await _dbService.ExecuteQueryAsync<(string MasterUnit, string MasterQty)>(
                 sql,
-                reader => (reader["MASTERUNIT"].ToString(), reader["MASTERUNITQTY"].ToString()),
+                reader => (reader["MASTERBAGUNIT"].ToString(), reader["MASTERBAGQTYFACTOR"].ToString()),
                 parameters);
 
-            var masterUnits = new List<string>();
+            // Default values if no record is found
+            string masterUnit = string.Empty;
             string masterQty = string.Empty;
 
-            foreach (var (masterUnit, qty) in result)
+            // If a record is found, use the fetched data
+            if (result.Count > 0)
             {
-                if (!string.IsNullOrEmpty(masterUnit))
-                    masterUnits.Add(masterUnit);
-                if (string.IsNullOrEmpty(masterQty) && !string.IsNullOrEmpty(qty))
-                    masterQty = qty;
+                masterUnit = result[0].MasterUnit;
+                masterQty = result[0].MasterQty;
             }
 
-            return (masterUnits, masterQty);
+            // Return the fetched master unit and qty (or default empty values)
+            return (masterUnit, masterQty);
         }
+
     }
 
     public class itemInfo

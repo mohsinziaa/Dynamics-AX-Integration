@@ -215,17 +215,26 @@
             url: "/Items?handler=FetchUnits",
             type: "GET",
             success: function (response) {
+
+                console.log(response);
+
                 let unitDropdowns = $("select.unit-dropdown");
                 unitDropdowns.empty();
 
                 let packingUnitDropdowns = $("select.packing-unit-dropdown");
                 packingUnitDropdowns.empty();
 
+                let masterUnitDropdowns = $("select.master-unit-dropdown");
+                masterUnitDropdowns.empty();
+
 
                 response.forEach(unit => {
                     unitDropdowns.append(`<option value="${unit}">${unit}</option>`);
                     packingUnitDropdowns.append(`<option value="${unit}">${unit}</option>`);
+                    masterUnitDropdowns.append(`<option value="${unit}">${unit}</option>`);
                 });
+
+                unitDropdowns.val("25KGBAG").change();
 
             },
             error: function () {
@@ -379,6 +388,7 @@
         let row = $(this).closest("tr");
         let selectedUnit = $(this).val();
         row.find(".packing-unit-dropdown").val(selectedUnit).change();
+        row.find(".master-unit-dropdown").val(selectedUnit).change();
     });
 
 
@@ -399,21 +409,12 @@
                 data: { itemNumber: itemNumber },
                 success: function (response) {
 
-                    console.log("API Response:", response); // Log entire response
-                    masterUnitDropdown.empty(); // Clear existing options
+                    console.log("API Response:", response); 
 
-                    // Populate Master Units dropdown if available
-                    if (response.masterUnits && response.masterUnits.length > 0) {
-                        response.masterUnits.forEach(unit => {
-                            masterUnitDropdown.append(`<option value="${unit}">${unit}</option>`);
-                        });
-                    } else {
-                        masterUnitDropdown.append('<option value=""></option>'); // Empty option if no units
-                    }
-
-                    // Set Master Qty input field
-                    if (response.masterQty) {
+                    // Set the Master Qty input field
+                    if (response.masterQty && response.masterUnit) {
                         masterQtyInput.val(response.masterQty);
+                        masterUnitDropdown.val(response.masterUnit).change();
                     } else {
                         masterQtyInput.val(""); // Set empty if no quantity available
                     }
