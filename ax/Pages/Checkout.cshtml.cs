@@ -3,8 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using System.Data.SqlClient;
+using ax.Services;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ax.Pages
 {
@@ -12,15 +13,15 @@ namespace ax.Pages
     public class CheckoutModel : PageModel
     {
         private readonly ILogger<CheckoutModel> _logger;
-        private readonly IConfiguration _configuration;
+        private readonly DatabaseService _dbService;
 
         // A simple in-memory storage for orders
         private static List<OrderData> OrderDatabase = new List<OrderData>();
 
-        public CheckoutModel(ILogger<CheckoutModel> logger, IConfiguration configuration)
+        public CheckoutModel(ILogger<CheckoutModel> logger, DatabaseService dbService)
         {
             _logger = logger;
-            _configuration = configuration;
+            _dbService = dbService;
         }
 
         public void OnGet()
@@ -69,12 +70,7 @@ namespace ax.Pages
         {
             try
             {
-                string connString = _configuration.GetConnectionString("DefaultConnection");
-
-                await using var connection = new SqlConnection(connString);
-                await connection.OpenAsync();
-
-                string insertQuery = @"
+                const string insertQuery = @"
                     INSERT INTO [MATCOAX].[dbo].[SALESTABLE]
                         (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,	
                         SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,	
@@ -84,26 +80,30 @@ namespace ax.Pages
                         (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
                         @SalesType, @RecieptDateRequested, @ShippingDateRequested,
                         @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
-                        @PurchOrderFormNum, @RefJournalID, @RecID, @DataAreaID)";                        
+                        @PurchOrderFormNum, @RefJournalID, @RecID, @DataAreaID)";
 
-                await using var command = new SqlCommand(insertQuery, connection);
-                command.Parameters.AddWithValue("@SalesId", "101"); 
-                command.Parameters.AddWithValue("@SalesName", customer.Name);
-                command.Parameters.AddWithValue("@CustAccount", customer.CustomerAccount);
-                command.Parameters.AddWithValue("@DeliverAddress", customer.DeliveryAddress);
-                command.Parameters.AddWithValue("@InvoiceAccount", customer.CustomerAccount); 
-                command.Parameters.AddWithValue("@SalesType", 1); // Default value (modify as needed)
-                command.Parameters.AddWithValue("@RecieptDateRequested", customer.PodDate);
-                command.Parameters.AddWithValue("@ShippingDateRequested", customer.PodDate); 
-                command.Parameters.AddWithValue("@CurrencyCode", "PKR"); 
-                command.Parameters.AddWithValue("@DlvMode", "Road");
-                command.Parameters.AddWithValue("@InventSiteID", customer.Site);
-                command.Parameters.AddWithValue("@InventLocationID", customer.Warehouse);
-                command.Parameters.AddWithValue("@PurchOrderFormNum", customer.Reference);
-                command.Parameters.AddWithValue("@RefJournalID", customer.Reference);
-                command.Parameters.AddWithValue("@RecID", 101); // Generate unique RecID if needed
-                command.Parameters.AddWithValue("@DataAreaID", "mrp");
-                await command.ExecuteNonQueryAsync();
+                var parameters = new Dictionary<string, object>
+                {
+                    { "@SalesId", "102" },
+                    { "@SalesName", customer.Name },
+                    { "@CustAccount", customer.CustomerAccount },
+                    { "@DeliverAddress", customer.DeliveryAddress },
+                    { "@InvoiceAccount", customer.CustomerAccount },
+                    { "@SalesType", 1 },
+                    { "@RecieptDateRequested", customer.PodDate },
+                    { "@ShippingDateRequested", customer.PodDate },
+                    { "@CurrencyCode", "PKR" },
+                    { "@DlvMode", "Road" },
+                    { "@InventSiteID", customer.Site },
+                    { "@InventLocationID", customer.Warehouse },
+                    { "@PurchOrderFormNum", customer.Reference },
+                    { "@RefJournalID", customer.Reference },
+                    { "@RecID", 102 }, // Generate unique RecID if needed
+                    { "@DataAreaID", "mrp" }
+                };
+
+                // Execute query using DatabaseService
+                await _dbService.ExecuteNonQueryAsync(insertQuery, parameters);
 
                 _logger.LogInformation("Customer data inserted successfully.");
             }

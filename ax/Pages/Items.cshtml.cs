@@ -1,68 +1,51 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
-using System.Data.SqlClient;
+using ax.Services;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace ax.Pages
 {
     public class ItemsModel : PageModel
     {
         private readonly ILogger<ItemsModel> _logger;
-        private readonly IConfiguration _configuration;
+        private readonly DatabaseService _dbService;
 
         public List<itemInfo> ItemsList { get; private set; } = new List<itemInfo>();
         public List<string> SiteList { get; private set; } = new List<string>();
 
-        public ItemsModel(ILogger<ItemsModel> logger, IConfiguration configuration)
+        public ItemsModel(ILogger<ItemsModel> logger, DatabaseService dbService)
         {
             _logger = logger;
-            _configuration = configuration;
+            _dbService = dbService;
         }
 
         public async Task OnGetAsync()
         {
             try
             {
-                string connString = _configuration.GetConnectionString("DefaultConnection");
-                await using var connection = new SqlConnection(connString);
-                await connection.OpenAsync();
+                _logger.LogInformation("Fetching items from the database...");
+                var items = await _dbService.ExecuteQueryAsync<itemInfo>(
+                    "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
+                    reader => new itemInfo
+                    {
+                        itemNumber = reader["ITEMID"].ToString() ?? string.Empty,
+                        itemName = reader["ITEMNAME"].ToString() ?? string.Empty
+                    });
 
-                _logger.LogInformation("Connection Established Successfully!");
-
-                // Retrieve items
-                await FetchItemsAsync(connection);
-
+                ItemsList.AddRange(items);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Database Connection Failed! Error: {ex.Message}");
-            }
-        }
-
-        private async Task FetchItemsAsync(SqlConnection connection)
-        {
-            const string sql = "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
-            await using var command = new SqlCommand(sql, connection);
-            await using var reader = await command.ExecuteReaderAsync();
-
-            ItemsList.Clear(); // Clear existing data before adding new items
-
-            while (await reader.ReadAsync())
-            {
-                var item = new itemInfo
-                {
-                    itemNumber = reader["ITEMID"].ToString() ?? string.Empty,
-                    itemName = reader["ITEMNAME"].ToString() ?? string.Empty
-                };
-                ItemsList.Add(item);
+                _logger.LogError($"Database query failed: {ex.Message}");
             }
         }
 
         // AJAX Handler for Fetching Sites
         public JsonResult OnGetFetchSites()
         {
-            // Set SiteList after fetching items
+            // Example: Set SiteList after fetching items from database (if needed)
             SiteList = new List<string> { "MATCO01", "MATCO02", "MATCO13", "RIVIANA", "GODOWNS" };
             return new JsonResult(SiteList);
         }
@@ -83,25 +66,16 @@ namespace ax.Pages
 
         private async Task<List<string>> FetchWarehousesAsync(string siteName)
         {
-            var warehousesList = new List<string>();
-            string connString = _configuration.GetConnectionString("DefaultConnection");
-
-            await using var connection = new SqlConnection(connString);
-            await connection.OpenAsync();
-
             const string sql = "SELECT DISTINCT INVENTLOCATIONID FROM InventDim WHERE INVENTSITEID = @SiteName AND INVENTLOCATIONID <> ' '";
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@SiteName", siteName);
-
-            await using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            var parameters = new Dictionary<string, object>
             {
-                string warehouse = reader["INVENTLOCATIONID"].ToString();
-                if (!string.IsNullOrEmpty(warehouse))
-                {
-                    warehousesList.Add(warehouse);
-                }
-            }
+                { "@SiteName", siteName }
+            };
+
+            var warehousesList = await _dbService.ExecuteQueryAsync<string>(
+                sql,
+                reader => reader["INVENTLOCATIONID"].ToString(),
+                parameters);
 
             return warehousesList;
         }
@@ -122,12 +96,6 @@ namespace ax.Pages
 
         private async Task<List<string>> FetchLocationsAsync(string siteName, string warehouseName)
         {
-            var locationsList = new List<string>();
-            string connString = _configuration.GetConnectionString("DefaultConnection");
-
-            await using var connection = new SqlConnection(connString);
-            await connection.OpenAsync();
-
             const string sql = @"
                 SELECT DISTINCT WMSLOCATIONID 
                 FROM INVENTDIM 
@@ -135,23 +103,19 @@ namespace ax.Pages
                   AND INVENTLOCATIONID = @WarehouseName 
                   AND LTRIM(RTRIM(WMSLOCATIONID)) <> ''";
 
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@SiteName", siteName);
-            command.Parameters.AddWithValue("@WarehouseName", warehouseName);
-
-            await using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            var parameters = new Dictionary<string, object>
             {
-                string location = reader["WMSLOCATIONID"].ToString();
-                if (!string.IsNullOrEmpty(location))
-                {
-                    locationsList.Add(location);
-                }
-            }
+                { "@SiteName", siteName },
+                { "@WarehouseName", warehouseName }
+            };
+
+            var locationsList = await _dbService.ExecuteQueryAsync<string>(
+                sql,
+                reader => reader["WMSLOCATIONID"].ToString(),
+                parameters);
 
             return locationsList;
         }
-
 
         public async Task<JsonResult> OnGetFetchUnits()
         {
@@ -162,34 +126,22 @@ namespace ax.Pages
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error fetching warehouses: {ex.Message}");
+                _logger.LogError($"Error fetching units: {ex.Message}");
                 return new JsonResult(new { error = "An error occurred while fetching units." });
             }
         }
 
         private async Task<List<string>> FetchUnitsAsync()
         {
-            var unitsList = new List<string>();
-            string connString = _configuration.GetConnectionString("DefaultConnection");
-
-            await using var connection = new SqlConnection(connString);
-            await connection.OpenAsync();
-
             const string sql = "SELECT DISTINCT SALESUNIT FROM SALESLINE WHERE SALESUNIT <> ' '";
-            await using var command = new SqlCommand(sql, connection);
 
-            await using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                string unit = reader["SALESUNIT"].ToString();
-                if (!string.IsNullOrEmpty(unit))
-                {
-                    unitsList.Add(unit);
-                }
-            }
+            var unitsList = await _dbService.ExecuteQueryAsync<string>(
+                sql,
+                reader => reader["SALESUNIT"].ToString());
 
             return unitsList;
         }
+
         public async Task<JsonResult> OnGetFetchMasterUnitsAndQty(string itemNumber)
         {
             try
@@ -198,10 +150,8 @@ namespace ax.Pages
 
                 var result = await FetchMasterUnitsAndQtyAsync(itemNumber);
 
-                // Log the fetched result
                 _logger.LogInformation($"Fetched Data - MasterUnits: {string.Join(", ", result.MasterUnits)}, MasterQty: {result.MasterQty}");
 
-                // If no master units are found, return an empty list and empty masterQty
                 return new JsonResult(new
                 {
                     masterUnits = result.MasterUnits,
@@ -217,52 +167,34 @@ namespace ax.Pages
 
         private async Task<(List<string> MasterUnits, string MasterQty)> FetchMasterUnitsAndQtyAsync(string itemNumber)
         {
-            var masterUnitsList = new List<string>();
-            string masterQty = "";
-            string connString = _configuration.GetConnectionString("DefaultConnection");
-
-            _logger.LogInformation("Connecting to database...");
-
-            await using var connection = new SqlConnection(connString);
-            await connection.OpenAsync();
-
-            _logger.LogInformation("Database connected.");
-
             const string sql = @"
-        SELECT DISTINCT MASTERUNIT, MASTERUNITQTY 
-        FROM SALESLINE 
-        WHERE ITEMID = @itemNumber AND MASTERUNIT <> ' '";
+                SELECT DISTINCT MASTERUNIT, MASTERUNITQTY 
+                FROM SALESLINE 
+                WHERE ITEMID = @itemNumber AND MASTERUNIT <> ' '";
 
-            _logger.LogInformation($"Executing SQL Query: {sql} with ItemNumber: {itemNumber}");
-
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@itemNumber", itemNumber);
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
+            var parameters = new Dictionary<string, object>
             {
-                string masterUnit = reader["MASTERUNIT"].ToString();
+                { "@itemNumber", itemNumber }
+            };
+
+            var result = await _dbService.ExecuteQueryAsync<(string MasterUnit, string MasterQty)>(
+                sql,
+                reader => (reader["MASTERUNIT"].ToString(), reader["MASTERUNITQTY"].ToString()),
+                parameters);
+
+            var masterUnits = new List<string>();
+            string masterQty = string.Empty;
+
+            foreach (var (masterUnit, qty) in result)
+            {
                 if (!string.IsNullOrEmpty(masterUnit))
-                {
-                    masterUnitsList.Add(masterUnit);
-                }
-
-                // Assign MASTERUNITQTY (if not already assigned)
-                if (string.IsNullOrEmpty(masterQty) && reader["MASTERUNITQTY"] != DBNull.Value)
-                {
-                    masterQty = reader["MASTERUNITQTY"].ToString();
-                }
-
-                _logger.LogInformation($"Fetched Row - MasterUnit: {masterUnit}, MasterQty: {masterQty}");
+                    masterUnits.Add(masterUnit);
+                if (string.IsNullOrEmpty(masterQty) && !string.IsNullOrEmpty(qty))
+                    masterQty = qty;
             }
 
-            _logger.LogInformation($"Final Result - MasterUnits: {string.Join(", ", masterUnitsList)}, MasterQty: {masterQty}");
-
-            return (masterUnitsList, masterQty);
+            return (masterUnits, masterQty);
         }
-
-
     }
 
     public class itemInfo
