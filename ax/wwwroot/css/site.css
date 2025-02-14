@@ -20,3 +20,9 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+.navbar .nav-link.active {
+    color: #007bff !important;
+    border-bottom: 1px solid #007bff; 
+}
+

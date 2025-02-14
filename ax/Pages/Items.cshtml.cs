@@ -27,7 +27,7 @@ namespace ax.Pages
             {
                 _logger.LogInformation("Fetching items from the database...");
                 var items = await _dbService.ExecuteQueryAsync<itemInfo>(
-                    "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
+                    "SELECT TOP 5 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
                     reader => new itemInfo
                     {
                         itemNumber = reader["ITEMID"].ToString() ?? string.Empty,

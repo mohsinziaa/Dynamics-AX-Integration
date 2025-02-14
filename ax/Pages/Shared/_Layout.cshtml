@@ -20,13 +20,13 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Customer</a>
+                            <a class="nav-link text-dark @(ViewData["CurrentPage"] as string == "/Index" ? "active" : "")" asp-area="" asp-page="/Index">Customer</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Items">Items</a>
+                            <a class="nav-link text-dark @(ViewData["CurrentPage"] as string == "/Items" ? "active" : "")" asp-area="" asp-page="/Items">Items</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Checkout">Checkout</a>
+                            <a class="nav-link text-dark @(ViewData["CurrentPage"] as string == "/Checkout" ? "active" : "")" asp-area="" asp-page="/Checkout">Checkout</a>
                         </li>
                     </ul>
                 </div>

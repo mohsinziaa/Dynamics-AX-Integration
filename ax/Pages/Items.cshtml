@@ -2,6 +2,7 @@
 @model ItemsModel
 @{
     ViewData["Title"] = "SO - Integration";
+    ViewData["CurrentPage"] = "/Items";
 }
 
 <style>
@@ -87,7 +88,7 @@
         <thead class="thead-dark">
             <tr>
                 <th scope="col">
-                    <input type="checkbox" id="selectAll" class="form-check-input">
+                    <input type="hidden" id="selectAll" class="form-check-input">
                 </th>
                 <th scope="col">Item Number</th>
                 <th scope="col">Item Name</th>
@@ -167,10 +168,11 @@
 
 </div>
 
-
-
 <div class="d-flex justify-content-end mt-5">
-    <button type="submit" class="btn btn-primary w-auto" id="generateSObtn">Generate Sales Order</button>
+    <button class="btn btn-primary" type="button" id="generateSObtn" disabled>
+        Generate Sales Order
+        <span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true" style="display:none;"></span>
+    </button>
 </div>
 
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -350,19 +352,19 @@
         });
 
         // Select all checkboxes when the header checkbox is clicked
-        $("#selectAll").on("click", function () {
-            $(".record-checkbox").prop("checked", $(this).prop("checked"));
+        // $("#selectAll").on("click", function () {
+        //     $(".record-checkbox").prop("checked", $(this).prop("checked"));
 
-        });
+        // });
 
         // Uncheck "Select All" if any individual checkbox is unchecked
-        $(document).on("click", ".record-checkbox", function () {
-            if (!$(this).prop("checked")) {
-                $("#selectAll").prop("checked", false);
-            } else if ($(".record-checkbox:checked").length === $(".record-checkbox").length) {
-                $("#selectAll").prop("checked", true);
-            }
-        });
+        // $(document).on("click", ".record-checkbox", function () {
+        //     if (!$(this).prop("checked")) {
+        //         $("#selectAll").prop("checked", false);
+        //     } else if ($(".record-checkbox:checked").length === $(".record-checkbox").length) {
+        //         $("#selectAll").prop("checked", true);
+        //     }
+        // });
 
     if (customerData) {
         console.log(customerData);
@@ -423,14 +425,25 @@
         }
     });
 
+        function toggleGenerateSOButton() {
+            if ($(".record-checkbox:checked").length > 0) {
+                $("#generateSObtn").prop("disabled", false);
+            } else {
+                $("#generateSObtn").prop("disabled", true);
+            }
+        }
+
         $(".record-checkbox").on("change", function () {
+
+            toggleGenerateSOButton();
+
             let tableBody = $("#itemList tbody");
             let rows = tableBody.find("tr").toArray();
 
             rows.sort((a, b) => {
                 let aChecked = $(a).find(".record-checkbox").prop("checked") ? 1 : 0;
                 let bChecked = $(b).find(".record-checkbox").prop("checked") ? 1 : 0;
-                return bChecked - aChecked; 
+                return bChecked - aChecked;
             });
 
             tableBody.append(rows);
@@ -439,6 +452,8 @@
 
         $("#generateSObtn").on("click", function () {
             // console.log("SO button clicked");
+            $(this).prop("disabled", true);
+            $(this).find(".spinner-border").show();
 
             let selectedItems = [];
 
@@ -480,9 +495,12 @@
             } else {
                 console.log("itemsSelected && customerData is NOT set.");
             }
-
-            window.location.href = "/Checkout";
+            // Simulate a delay to show the loading spinner
+            setTimeout(function() {
+                window.location.href = "/Checkout";
+            }, 2000);
         });
+
 
 
     });
