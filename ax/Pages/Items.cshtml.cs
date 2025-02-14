@@ -42,7 +42,7 @@ namespace ax.Pages
 
         private async Task FetchItemsAsync(SqlConnection connection)
         {
-            const string sql = "SELECT ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
+            const string sql = "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'";
             await using var command = new SqlCommand(sql, connection);
             await using var reader = await command.ExecuteReaderAsync();
 

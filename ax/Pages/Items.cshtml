@@ -423,6 +423,19 @@
         }
     });
 
+        $(".record-checkbox").on("change", function () {
+            let tableBody = $("#itemList tbody");
+            let rows = tableBody.find("tr").toArray();
+
+            rows.sort((a, b) => {
+                let aChecked = $(a).find(".record-checkbox").prop("checked") ? 1 : 0;
+                let bChecked = $(b).find(".record-checkbox").prop("checked") ? 1 : 0;
+                return bChecked - aChecked; 
+            });
+
+            tableBody.append(rows);
+        });
+
 
         $("#generateSObtn").on("click", function () {
             // console.log("SO button clicked");
@@ -470,9 +483,6 @@
 
             window.location.href = "/Checkout";
         });
-
-
-
 
 
     });
