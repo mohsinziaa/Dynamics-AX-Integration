@@ -213,11 +213,11 @@ namespace ax.Pages
                 AND INVENTSIZEID = ''";
 
                 var parameters = new Dictionary<string, object>
-        {
-            { "@Site", item.Site },
-            { "@Warehouse", item.Warehouse },
-            { "@Location", item.Location }
-        };
+                {
+                    { "@Site", item.Site },
+                    { "@Warehouse", item.Warehouse },
+                    { "@Location", item.Location }
+                };
 
                 var result = await _dbService.ExecuteQueryAsync<string>(
                     fetchInventDimIdQuery,
@@ -235,13 +235,13 @@ namespace ax.Pages
                 {
                     _logger.LogWarning("No INVENTDIMID found for Site: {Site}, Warehouse: {Warehouse}, Location: {Location}",
                         item.Site, item.Warehouse, item.Location);
-                    return string.Empty; // Or handle it as needed
+                    return string.Empty; 
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error fetching INVENTDIMID: {ex.Message}", ex);
-                return string.Empty; // Handle error case
+                return string.Empty; 
             }
         }
 
@@ -254,11 +254,15 @@ namespace ax.Pages
 
                 foreach (var item in items)
                 {
+                    Console.WriteLine("\n---------------------------------------------\n");
+
                     // Fetch the next SalesID
                     int salesId = await FetchSalesIdAsync();
 
                     // Increment the SalesID in the NUMBERSEQUENCETABLE
-                    await IncrementSalesIdAsync();
+                    //await IncrementSalesIdAsync();
+
+                    _logger.LogInformation("\nSales ID Fetched: {salesID}", salesId);
 
                     // Insert customer data into SALESTABLE
                     string insertQuery = @"
@@ -266,12 +270,12 @@ namespace ax.Pages
                         (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,    
                         SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,    
                         CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
-                        PURCHORDERFORMNUM, REFJOURNALID, RECID, LANGUAGEID, SALESRESPONSIBLE, DATAAREAID)
+                        PURCHORDERFORMNUM, REFJOURNALID, RECID, LANGUAGEID, SALESRESPONSIBLE, DATAAREAID, CREATEDBY,CREATEDDATETIME)
                     VALUES
                         (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
                         @SalesType, @RecieptDateRequested, @ShippingDateRequested,
                         @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
-                        @PurchOrderFormNum, @RefJournalID, @RecID, @LanguageID, @SalesResponsible, @DataAreaID)";
+                        @PurchOrderFormNum, @RefJournalID, @RecID, @LanguageID, @SalesResponsible, @DataAreaID, @CreatedBy, GETDATE())";
 
                     var parametersForInsert = new Dictionary<string, object>
                     {
@@ -284,7 +288,7 @@ namespace ax.Pages
                         { "@RecieptDateRequested", customer.PodDate },
                         { "@ShippingDateRequested", customer.PodDate },
                         { "@CurrencyCode", "PKR" },
-                        { "@DlvMode", "Road" },
+                        { "@DlvMode", "ROAD" },
                         { "@InventSiteID", customer.Site },
                         { "@InventLocationID", customer.Warehouse },
                         { "@PurchOrderFormNum", customer.Reference },
@@ -292,35 +296,37 @@ namespace ax.Pages
                         { "@RecID", salesId }, // Using SalesID as RecID for now
                         { "@LanguageID", "EN-US" },
                         { "@SalesResponsible", "00550" },
-                        { "@DataAreaID", "mrp" }
+                        { "@DataAreaID", "mrp" },
+                        { "@CreatedBy", "mohsin" },
                     };
 
-                    await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
-                    _logger.LogInformation("Customer data inserted successfully with SalesID: SO-{SalesID}", salesId);
+                    //await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
+                    _logger.LogInformation("\nCustomer data inserted successfully with SalesID: SO-{SalesID}", salesId);
 
                     // Insert Sales Line for the item
                     try
                     {
-                        _logger.LogInformation("Inserting Sales Line for Sales Order: SO-{SalesID}, Item: {ItemID}", salesId, item.ItemNumber);
+                        _logger.LogInformation("\n\nInserting Sales Line for Sales Order: SO-{SalesID}, Item: {ItemID}", salesId, item.ItemNumber);
 
                         // Fetch the next INVENTTRANSID
                         string inventTransId = await FetchInventTransIdAsync();
 
                         // Increment the INVENTTRANSID in the NUMBERSEQUENCETABLE
-                        await IncrementInventTransIdAsync();
+                        //await IncrementInventTransIdAsync();
 
                         // Fetch the INVENTDIMID for the item
                         string inventDimId = await FetchInventDimIdAsync(item);
 
                         _logger.LogInformation("TransID Fetched: {inventTransId}", inventTransId);
+                        _logger.LogInformation("InventDimId Fetched: {inventDimId}", inventDimId);
 
                         string insertSalesLineQuery = @"
                         INSERT INTO [MATCOAX].[dbo].[SALESLINE]
                             (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, PACKINGUNIT, PACKINGUNITQTY,
-                            MASTERUNIT, MASTERUNITQTY, RECID, DATAAREAID, INVENTTRANSID, INVENTDIMID, CreatedDateTime)
+                            MASTERUNIT, MASTERUNITQTY, CURRENCYCODE, RECID, DATAAREAID, SALESTYPE, INVENTTRANSID, INVENTDIMID, CreatedDateTime)
                         VALUES
                             (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, @PackingUnit, 
-                            @PackingUnitQty, @MasterUnit, @MasterUnitQty, @RecID, @DataAreaID, @InventTransID, 
+                            @PackingUnitQty, @MasterUnit, @MasterUnitQty, @CurrencyCode, @RecID, @DataAreaID, @SalesType, @InventTransID, 
                             @InventDimID, GETDATE())";
 
                         var salesLineParams = new Dictionary<string, object>
@@ -334,16 +340,20 @@ namespace ax.Pages
                             { "@PackingUnitQty", item.PackingUnitQty },
                             { "@MasterUnit", item.MasterUnit },
                             { "@MasterUnitQty", item.MasterUnitQty },
+                            { "@CurrencyCode", "PKR" },
                             //{ "@InventSiteID", item.Site },
                             //{ "@InventLocationID", item.Warehouse },
                             { "@RecID", salesId }, // Assuming same RecID as Sales Order
                             { "@DataAreaID", "mrp" },
+                            { "@SalesType", 3 },
                             { "@InventTransID", inventTransId},
                             { "@InventDimID", inventDimId},
                         };
 
-                        await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
+                        //await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
                         _logger.LogInformation("Sales Line inserted successfully for SalesID: SO-{SalesID}, Item: {ItemID}", salesId, item.ItemNumber);
+
+                        await Task.Delay(1000);
                     }
                     catch (Exception ex)
                     {
@@ -375,7 +385,6 @@ namespace ax.Pages
         public string PodDate { get; set; } = string.Empty;
         public string Reference { get; set; } = string.Empty;
         public string SalesOrder { get; set; } = string.Empty;
-        public string ShippingTimezone { get; set; } = string.Empty;
         public string Site { get; set; } = string.Empty;
         public string Warehouse { get; set; } = string.Empty;
     }
