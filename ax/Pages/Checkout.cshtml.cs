@@ -50,7 +50,7 @@ namespace ax.Pages
             _logger.LogInformation("Processing order...");
 
             // Insert customer data into SALESTABLE
-            await InsertCustomerDataAsync(orderData.Customer);
+            await InsertCustomerDataAsync(orderData.Customer, orderData.Items);
 
             // Print the stored data to the console (for demonstration purposes)
             Console.WriteLine("\nStored Orders");
@@ -128,62 +128,101 @@ namespace ax.Pages
             }
         }
 
-        private async Task InsertCustomerDataAsync(CustomerData customer)
+        private async Task InsertCustomerDataAsync(CustomerData customer, List<ItemData> items)
         {
             try
             {
-                // Log the start of the method execution
                 _logger.LogInformation("Started inserting customer data for Customer: {CustomerName}, Account: {CustomerAccount}", customer.Name, customer.CustomerAccount);
 
-                // Fetch the next SalesID
-                int salesId = await FetchSalesIdAsync();
+                foreach (var item in items)
+                {
+                    // Fetch the next SalesID
+                    int salesId = await FetchSalesIdAsync();
 
-                // Increment the SalesID in the NUMBERSEQUENCETABLE
-                await IncrementSalesIdAsync();
+                    // Increment the SalesID in the NUMBERSEQUENCETABLE
+                    await IncrementSalesIdAsync();
 
-                // Insert customer data into SALESTABLE
-                string insertQuery = @"
-                                    INSERT INTO [MATCOAX].[dbo].[SALESTABLE]
-                                        (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,    
-                                        SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,    
-                                        CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
-                                        PURCHORDERFORMNUM, REFJOURNALID, RECID, LANGUAGEID, SALESRESPONSIBLE, DATAAREAID)
-                                    VALUES
-                                        (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
-                                        @SalesType, @RecieptDateRequested, @ShippingDateRequested,
-                                        @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
-                                        @PurchOrderFormNum, @RefJournalID, @RecID, @LanguageID, @SalesResponsible, @DataAreaID)";
+                    // Insert customer data into SALESTABLE
+                    string insertQuery = @"
+                    INSERT INTO [MATCOAX].[dbo].[SALESTABLE]
+                        (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,    
+                        SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,    
+                        CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
+                        PURCHORDERFORMNUM, REFJOURNALID, RECID, LANGUAGEID, SALESRESPONSIBLE, DATAAREAID)
+                    VALUES
+                        (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
+                        @SalesType, @RecieptDateRequested, @ShippingDateRequested,
+                        @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
+                        @PurchOrderFormNum, @RefJournalID, @RecID, @LanguageID, @SalesResponsible, @DataAreaID)";
 
-                _logger.LogInformation("Executing query to insert customer data into SALESTABLE.");
-
-                var parametersForInsert = new Dictionary<string, object>
+                    var parametersForInsert = new Dictionary<string, object>
                     {
-                    { "@SalesId", "SO-" + salesId.ToString() },
-                    { "@SalesName", customer.Name },
-                    { "@CustAccount", customer.CustomerAccount },
-                    { "@DeliverAddress", customer.DeliveryAddress },
-                    { "@InvoiceAccount", customer.CustomerAccount },
-                    { "@SalesType", 3 },
-                    { "@RecieptDateRequested", customer.PodDate },
-                    { "@ShippingDateRequested", customer.PodDate },
-                    { "@CurrencyCode", "PKR" },
-                    { "@DlvMode", "Road" },
-                    { "@InventSiteID", customer.Site },
-                    { "@InventLocationID", customer.Warehouse },
-                    { "@PurchOrderFormNum", customer.Reference },
-                    { "@RefJournalID", customer.Reference },
-                    { "@RecID", salesId }, // Using SalesID as RecID for now
-                    { "@LanguageID", "EN-US" },
-                    { "@SalesResponsible", "00550" },
-                    { "@DataAreaID", "mrp" }
-                };
+                        { "@SalesId", "SO-" + salesId.ToString() },
+                        { "@SalesName", customer.Name },
+                        { "@CustAccount", customer.CustomerAccount },
+                        { "@DeliverAddress", customer.DeliveryAddress },
+                        { "@InvoiceAccount", customer.CustomerAccount },
+                        { "@SalesType", 3 },
+                        { "@RecieptDateRequested", customer.PodDate },
+                        { "@ShippingDateRequested", customer.PodDate },
+                        { "@CurrencyCode", "PKR" },
+                        { "@DlvMode", "Road" },
+                        { "@InventSiteID", customer.Site },
+                        { "@InventLocationID", customer.Warehouse },
+                        { "@PurchOrderFormNum", customer.Reference },
+                        { "@RefJournalID", customer.Reference },
+                        { "@RecID", salesId }, // Using SalesID as RecID for now
+                        { "@LanguageID", "EN-US" },
+                        { "@SalesResponsible", "00550" },
+                        { "@DataAreaID", "mrp" }
+                    };
 
-                await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
-                _logger.LogInformation("Customer data inserted successfully with SalesID: SO-{SalesID}", salesId);
+                    await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
+                    _logger.LogInformation("Customer data inserted successfully with SalesID: SO-{SalesID}", salesId);
+
+                    // Insert Sales Line for the item
+                    try
+                    {
+                        _logger.LogInformation("Inserting Sales Line for Sales Order: SO-{SalesID}, Item: {ItemID}", salesId, item.ItemNumber);
+
+                        string insertSalesLineQuery = @"
+                        INSERT INTO [MATCOAX].[dbo].[SALESLINE]
+                            (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, PACKINGUNIT, PACKINGUNITQTY,
+                            MASTERUNIT, MASTERUNITQTY, RECID, DATAAREAID, CreatedDateTime, INVENTTRANSID)
+                        VALUES
+                            (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, @PackingUnit, 
+                            @PackingUnitQty, @MasterUnit, @MasterUnitQty, @RecID, @DataAreaID, GETDATE(), @InventTransID)";
+
+                        var salesLineParams = new Dictionary<string, object>
+                        {
+                            { "@SalesId", "SO-" + salesId.ToString() },
+                            { "@ItemID", item.ItemNumber },
+                            { "@ItemName", item.ItemName },
+                            { "@SalesUnit", item.Unit },
+                            { "@SalesQty", item.Quantity },
+                            { "@PackingUnit", item.PackingUnit },
+                            { "@PackingUnitQty", item.PackingUnitQty },
+                            { "@MasterUnit", item.MasterUnit },
+                            { "@MasterUnitQty", item.MasterUnitQty },
+                            //{ "@InventSiteID", item.Site },
+                            //{ "@InventLocationID", item.Warehouse },
+                            { "@RecID", salesId }, // Assuming same RecID as Sales Order
+                            { "@DataAreaID", "mrp" },
+                            { "@InventTransID", "05654821_078"}
+                        };
+
+                        await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
+                        _logger.LogInformation("Sales Line inserted successfully for SalesID: SO-{SalesID}, Item: {ItemID}", salesId, item.ItemNumber);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"Error creating Sales Line for Item {item.ItemNumber}: {ex.Message}", ex);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error inserting customer data: {ex.Message}", ex);
+                _logger.LogError($"Error inserting Sales Order: {ex.Message}", ex);
             }
         }
 
