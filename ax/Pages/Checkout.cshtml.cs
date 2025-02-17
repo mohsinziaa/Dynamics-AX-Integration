@@ -75,9 +75,9 @@ namespace ax.Pages
                 _logger.LogInformation("Executing query to fetch the next SalesID.");
 
                 string fetchSalesIdQuery = @"
-            SELECT NEXTREC 
-            FROM NUMBERSEQUENCETABLE 
-            WHERE FORMAT LIKE 'SO-%' AND DATAAREAID = 'mrp'";
+                SELECT NEXTREC 
+                FROM NUMBERSEQUENCETABLE 
+                WHERE DATAAREAID = 'mrp' AND NUMBERSEQUENCE = 'SO_2018'";
 
                 var parameters = new Dictionary<string, object>();
 
@@ -116,7 +116,7 @@ namespace ax.Pages
                 string updateSalesIdQuery = @"
             UPDATE NUMBERSEQUENCETABLE
             SET NEXTREC = CAST(CAST(NEXTREC AS INT) + 1 AS VARCHAR)
-            WHERE FORMAT LIKE 'SO-%' AND DATAAREAID = 'mrp'";
+            WHERE DATAAREAID = 'mrp' AND NUMBERSEQUENCE = 'SO_2018'";
 
                 await _dbService.ExecuteNonQueryAsync(updateSalesIdQuery);
                 _logger.LogInformation("SalesID successfully incremented in NUMBERSEQUENCETABLE.");
@@ -127,6 +127,124 @@ namespace ax.Pages
                 throw;
             }
         }
+
+
+        private async Task<string> FetchInventTransIdAsync()
+        {
+            try
+            {
+                // Log the start of the method execution
+                _logger.LogInformation("Executing query to fetch the next INVENTTRANSID.");
+
+                string fetchInventTransIdQuery = @"
+                SELECT NEXTREC, FORMAT
+                FROM NUMBERSEQUENCETABLE 
+                WHERE DATAAREAID = 'mrp' AND NUMBERSEQUENCE = 'Inve_78'";
+
+                var parameters = new Dictionary<string, object>();
+
+                // Execute the query and fetch the NEXTREC and FORMAT
+                var result = await _dbService.ExecuteQueryAsync<dynamic>(
+                    fetchInventTransIdQuery,
+                    reader => new { NEXTREC = reader.GetInt32(0), FORMAT = reader.GetString(1) },
+                    parameters
+                );
+
+                if (result.Count > 0)
+                {
+                    var nextRec = result[0].NEXTREC;
+                    var format = result[0].FORMAT;
+                    // Format the NEXTREC based on the FORMAT
+                    string inventTransId = nextRec.ToString("D8") + "_078";
+
+                    _logger.LogInformation("Fetched INVENTTRANSID: {InventTransID}", inventTransId);
+                    return inventTransId;
+                }
+                else
+                {
+                    _logger.LogError("Failed to fetch a valid INVENTTRANSID from NUMBERSEQUENCETABLE.");
+                    throw new InvalidOperationException("Failed to fetch a valid INVENTTRANSID.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching INVENTTRANSID: {ex.Message}", ex);
+                throw;
+            }
+        }
+
+        private async Task IncrementInventTransIdAsync()
+        {
+            try
+            {
+                // Log the start of the increment operation
+                _logger.LogInformation("Executing query to increment the INVENTTRANSID in NUMBERSEQUENCETABLE.");
+
+                string updateInventTransIdQuery = @"
+                UPDATE NUMBERSEQUENCETABLE
+                SET NEXTREC = CAST(CAST(NEXTREC AS INT) + 1 AS VARCHAR)
+                WHERE DATAAREAID = 'mrp' AND NUMBERSEQUENCE = 'Inve_78'";
+
+                await _dbService.ExecuteNonQueryAsync(updateInventTransIdQuery);
+                _logger.LogInformation("INVENTTRANSID successfully incremented in NUMBERSEQUENCETABLE.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error incrementing INVENTTRANSID: {ex.Message}", ex);
+                throw;
+            }
+        }
+
+        private async Task<string> FetchInventDimIdAsync(ItemData item)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching INVENTDIMID for Site: {Site}, Warehouse: {Warehouse}, Location: {Location}",
+                    item.Site, item.Warehouse, item.Location);
+
+                string fetchInventDimIdQuery = @"
+                SELECT INVENTDIMID FROM INVENTDIM 
+                WHERE DATAAREAID = 'MRP'
+                AND INVENTSITEID = @Site
+                AND INVENTLOCATIONID = @Warehouse
+                AND WMSLOCATIONID = @Location
+                AND INVENTBATCHID = ''
+                AND INVENTCOLORID = ''
+                AND INVENTSIZEID = ''";
+
+                var parameters = new Dictionary<string, object>
+        {
+            { "@Site", item.Site },
+            { "@Warehouse", item.Warehouse },
+            { "@Location", item.Location }
+        };
+
+                var result = await _dbService.ExecuteQueryAsync<string>(
+                    fetchInventDimIdQuery,
+                    reader => reader.GetString(0),
+                    parameters
+                );
+
+                if (result.Count > 0)
+                {
+                    string inventDimId = result[0];
+                    _logger.LogInformation("Fetched INVENTDIMID: {InventDimId}", inventDimId);
+                    return inventDimId;
+                }
+                else
+                {
+                    _logger.LogWarning("No INVENTDIMID found for Site: {Site}, Warehouse: {Warehouse}, Location: {Location}",
+                        item.Site, item.Warehouse, item.Location);
+                    return string.Empty; // Or handle it as needed
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching INVENTDIMID: {ex.Message}", ex);
+                return string.Empty; // Handle error case
+            }
+        }
+
 
         private async Task InsertCustomerDataAsync(CustomerData customer, List<ItemData> items)
         {
@@ -185,13 +303,25 @@ namespace ax.Pages
                     {
                         _logger.LogInformation("Inserting Sales Line for Sales Order: SO-{SalesID}, Item: {ItemID}", salesId, item.ItemNumber);
 
+                        // Fetch the next INVENTTRANSID
+                        string inventTransId = await FetchInventTransIdAsync();
+
+                        // Increment the INVENTTRANSID in the NUMBERSEQUENCETABLE
+                        await IncrementInventTransIdAsync();
+
+                        // Fetch the INVENTDIMID for the item
+                        string inventDimId = await FetchInventDimIdAsync(item);
+
+                        _logger.LogInformation("TransID Fetched: {inventTransId}", inventTransId);
+
                         string insertSalesLineQuery = @"
                         INSERT INTO [MATCOAX].[dbo].[SALESLINE]
                             (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, PACKINGUNIT, PACKINGUNITQTY,
-                            MASTERUNIT, MASTERUNITQTY, RECID, DATAAREAID, CreatedDateTime, INVENTTRANSID)
+                            MASTERUNIT, MASTERUNITQTY, RECID, DATAAREAID, INVENTTRANSID, INVENTDIMID, CreatedDateTime)
                         VALUES
                             (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, @PackingUnit, 
-                            @PackingUnitQty, @MasterUnit, @MasterUnitQty, @RecID, @DataAreaID, GETDATE(), @InventTransID)";
+                            @PackingUnitQty, @MasterUnit, @MasterUnitQty, @RecID, @DataAreaID, @InventTransID, 
+                            @InventDimID, GETDATE())";
 
                         var salesLineParams = new Dictionary<string, object>
                         {
@@ -208,7 +338,8 @@ namespace ax.Pages
                             //{ "@InventLocationID", item.Warehouse },
                             { "@RecID", salesId }, // Assuming same RecID as Sales Order
                             { "@DataAreaID", "mrp" },
-                            { "@InventTransID", "05654821_078"}
+                            { "@InventTransID", inventTransId},
+                            { "@InventDimID", inventDimId},
                         };
 
                         await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
