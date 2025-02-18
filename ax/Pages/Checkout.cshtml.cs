@@ -270,12 +270,14 @@ namespace ax.Pages
                         (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,    
                         SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,    
                         CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
-                        PURCHORDERFORMNUM, REFJOURNALID, RECID, LANGUAGEID, SALESRESPONSIBLE, DATAAREAID, CREATEDBY,CREATEDDATETIME)
+                        PURCHORDERFORMNUM, REFJOURNALID, RECID, LANGUAGEID, SALESRESPONSIBLE, DATAAREAID, 
+                        DIMENSION, DIMENSION2_, DIMENSION3_, CREATEDBY,CREATEDDATETIME)
                     VALUES
                         (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
                         @SalesType, @RecieptDateRequested, @ShippingDateRequested,
                         @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
-                        @PurchOrderFormNum, @RefJournalID, @RecID, @LanguageID, @SalesResponsible, @DataAreaID, @CreatedBy, GETDATE())";
+                        @PurchOrderFormNum, @RefJournalID, @RecID, @LanguageID, @SalesResponsible, @DataAreaID, 
+                        @Dimension1, @Dimension2, @Dimension3, @CreatedBy, GETDATE())";
 
                     var parametersForInsert = new Dictionary<string, object>
                     {
@@ -295,8 +297,11 @@ namespace ax.Pages
                         { "@RefJournalID", customer.Reference },
                         { "@RecID", salesId }, // Using SalesID as RecID for now
                         { "@LanguageID", "EN-US" },
-                        { "@SalesResponsible", "00550" },
+                        { "@SalesResponsible", "01631" },
                         { "@DataAreaID", "mrp" },
+                        { "@Dimension1", "06" },
+                        { "@Dimension2", "0600001" },
+                        { "@Dimension3", "02" },
                         { "@CreatedBy", "mohsin" },
                     };
 
@@ -324,11 +329,12 @@ namespace ax.Pages
                         string insertSalesLineQuery = @"
                         INSERT INTO [MATCOAX].[dbo].[SALESLINE]
                             (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, PACKINGUNIT, PACKINGUNITQTY,
-                            MASTERUNIT, MASTERUNITQTY, CURRENCYCODE, RECID, DATAAREAID, SALESTYPE, INVENTTRANSID, INVENTDIMID, CreatedDateTime)
+                            MASTERUNIT, MASTERUNITQTY, CURRENCYCODE, RECID, DATAAREAID, SALESTYPE, INVENTTRANSID, INVENTDIMID, 
+                            DIMENSION, DIMENSION2_, DIMENSION3_, CreatedDateTime)
                         VALUES
                             (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, @PackingUnit, 
                             @PackingUnitQty, @MasterUnit, @MasterUnitQty, @CurrencyCode, @RecID, @DataAreaID, @SalesType, @InventTransID, 
-                            @InventDimID, GETDATE())";
+                            @InventDimID, @Dimension1, @Dimension2, @Dimension3, GETDATE())";
 
                         var salesLineParams = new Dictionary<string, object>
                         {
@@ -347,11 +353,14 @@ namespace ax.Pages
                             { "@SalesType", 3 },
                             { "@InventTransID", inventTransId},
                             { "@InventDimID", inventDimId},
+                            { "@Dimension1", "06" },
+                            { "@Dimension2", "0600001" },
+                            { "@Dimension3", "02" },
+
                         };
 
                         //await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
                         Console.WriteLine($"\nSales Line inserted successfully for SalesID: SO-{salesId}, Item: {item.ItemNumber}\n");
-
                         await Task.Delay(1000);
                     }
                     catch (Exception ex)

@@ -78,11 +78,11 @@
     <div class="row mb-3">
         <div class="col-md-3">
             <label for="customerRequisition" class="form-label">Customer Requisition</label>
-            <input type="text" class="form-control" id="customerRequisition">
+            <input type="text" class="form-control disabled-field" id="customerRequisition">
         </div>
         <div class="col">
             <label for="reference" class="form-label">Reference</label>
-            <input type="text" class="form-control" id="reference">
+            <input type="text" class="form-control disabled-field" id="reference">
         </div>
     </div>
 
@@ -110,6 +110,10 @@
                 <!-- Item rows will be inserted here dynamically -->
             </tbody>
         </table>
+    </div>
+
+    <div id="dangerAlert" class="alert alert-danger mt-3" style="display: none;">
+        <strong>Error!</strong> You need to add customer data AND items before you proceed.
     </div>
 
     <div id="successAlert" class="alert alert-success mt-3" style="display: none;">
@@ -195,6 +199,7 @@
             console.log("Items or Customer Data not found in sessionStorage.");
             // Hide the Generate Orders Button if no items are available
             $("#generateOrders").hide();
+            $("#dangerAlert").fadeIn();
         }
 
 

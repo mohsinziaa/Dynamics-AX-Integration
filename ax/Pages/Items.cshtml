@@ -260,19 +260,23 @@
                     let warehouseDropdown = row.find("select.warehouse-dropdown");
 
                     warehouseDropdown.empty();
+
                     response.forEach(function (warehouse) {
                         warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
                     });
 
-
                     const customerWarehouse = customerData?.warehouse;
+                    let isWarehouseValid = warehouseDropdown.find(`option[value="${customerWarehouse}"]`).length > 0;
 
-                    if(customerData.warehouse){
-                        warehouseDropdown.each(function () {
-                            $(this).val(customerWarehouse).change();
-                        });
-                        warehouseDropdown.val(customerWarehouse);
+                    if (isWarehouseValid) {
+                        warehouseDropdown.val(customerWarehouse).change();
                         updateLocations(customerWarehouse, row);
+                    } else {
+                        let firstOption = warehouseDropdown.find("option:first").val();
+                        if (firstOption) {
+                            warehouseDropdown.val(firstOption).change();
+                            updateLocations(firstOption, row);
+                        }
                     }
                 },
                 error: function () {
