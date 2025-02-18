@@ -469,7 +469,55 @@ namespace ax.Pages
                         await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
                         Console.WriteLine($"\nSales Line inserted successfully for SalesID: SO-{salesId}, Item: {item.ItemNumber}\n");
                         await Task.Delay(2000);
+
+
+                        try
+                        {
+                            Console.WriteLine("Inserting Invent Trans:");
+                            Console.WriteLine("---------------------------------------------");
+
+                            // Insert Invent Trans record
+                            string insertInventTransQuery = @"
+                            INSERT INTO [MATCOAX].[dbo].[INVENTTRANS]
+                                (ITEMID, TRANSREFID, CUSTVENDAC, INVENTTRANSID, 
+                                CURRENCYCODE, TRANSTYPE
+                                
+
+                                QTY, DATAAREAID, RECID, DATEPHYSICAL, DATEFINANCIAL) 
+
+                            VALUES
+                                (@ItemID, @TransrefID, @CustVendAcc, @InventTransID,
+                                @CurrencyCode, @TransType
+
+                                @Qty, @DataAreaID, @RecID, GETDATE(), GETDATE())";
+
+                            var inventTransParams = new Dictionary<string, object>
+                            {
+                                { "@ItemID", item.ItemNumber },
+                                { "@TransrefID", "SO-" + salesId.ToString() },
+                                { "@CustVendAcc", customer.CustomerAccount },
+                                { "@InventTransID", inventTransId },
+
+                                { "@CurrencyCode", "PKR" },
+                                { "@TransType", 3 },
+
+                                { "@Qty", item.Quantity },
+                                { "@DataAreaID", "mrp" },
+                                { "@RecID", salesLineRecId },
+                            };
+
+                            await _dbService.ExecuteNonQueryAsync(insertInventTransQuery, inventTransParams);
+                            Console.WriteLine("Invent Trans inserted successfully");
+                        }
+
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error creating Invent Trans for Item {item.ItemNumber}: {ex.Message}");
+                        }
+
                     }
+
+
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Error creating Sales Line for Item {item.ItemNumber}: {ex.Message}");
