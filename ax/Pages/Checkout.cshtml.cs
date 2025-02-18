@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using ax.Services;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace ax.Pages
 {
@@ -67,6 +68,40 @@ namespace ax.Pages
             return new JsonResult(new { message = "Order data received successfully." });
         }
 
+
+        private async Task<long> GetNextRecIdAsync(string tableName)
+        {
+            try
+            {
+                string query = $@"
+                WITH MissingNumbers AS (
+                    SELECT t1.RECID + 1 AS MissingID
+                    FROM {tableName} t1
+                    LEFT JOIN {tableName} t2 ON t1.RECID + 1 = t2.RECID
+                    WHERE t2.RECID IS NULL
+                )
+                SELECT TOP 1 MissingID 
+                FROM MissingNumbers
+                WHERE MissingID NOT IN (SELECT RECID FROM {tableName})
+                ORDER BY MissingID ASC";
+
+                var parameters = new Dictionary<string, object>();
+
+                var result = await _dbService.ExecuteQueryAsync<long>(
+                    query,
+                    reader => reader.GetInt64(0),
+                    parameters
+                );
+
+                return result.Count > 0 ? result[0] : 1; // Start from 1 if no record exists
+            }
+
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching next RECID for {tableName}: {ex.Message}", ex);
+                throw;
+            }
+        }
 
         private async Task<int> FetchSalesIdAsync()
         {
@@ -246,6 +281,43 @@ namespace ax.Pages
             }
         }
 
+        private async Task<string> FetchCustGroupAsync(string customerAccount)
+        {
+            try
+            {
+                string fetchCustGroupQuery = @"
+                SELECT TOP 1 CUSTGROUP
+                FROM CUSTTABLE
+                WHERE ACCOUNTNUM = @AccountNum";
+
+                var parameters = new Dictionary<string, object>
+                {
+                    { "@AccountNum", customerAccount }
+                };
+
+                // Execute the query to fetch the CUSTGROUP
+                var result = await _dbService.ExecuteQueryAsync<string>(
+                    fetchCustGroupQuery,
+                    reader => reader.GetString(0), // Extract the first column as string
+                    parameters
+                );
+
+                if (result.Count > 0)
+                {
+                    return result[0]; // Return the first (and expected) CUSTGROUP
+                }
+                else
+                {
+                    _logger.LogWarning($"No CUSTGROUP found for Account: {customerAccount}");
+                    return string.Empty; // Return empty if no result
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching CUSTGROUP: {ex.Message}", ex);
+                return string.Empty;
+            }
+        }
 
         private async Task InsertCustomerDataAsync(CustomerData customer, List<ItemData> items)
         {
@@ -261,8 +333,12 @@ namespace ax.Pages
 
                     // Fetch the next SalesID
                     int salesId = await FetchSalesIdAsync();
+                    await IncrementSalesIdAsync();
+                    long salesTableRecId = await GetNextRecIdAsync("SALESTABLE");
+                    
 
                     Console.WriteLine($"Sales ID Generated: SO-{salesId}");
+                    Console.WriteLine($"REC ID Generated for SALESTABLE: {salesTableRecId}");
 
                     // Insert customer data into SALESTABLE
                     string insertQuery = @"
@@ -270,14 +346,19 @@ namespace ax.Pages
                         (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,    
                         SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,    
                         CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
-                        PURCHORDERFORMNUM, REFJOURNALID, RECID, LANGUAGEID, SALESRESPONSIBLE, DATAAREAID, 
-                        DIMENSION, DIMENSION2_, DIMENSION3_, CREATEDBY,CREATEDDATETIME)
+                        PURCHORDERFORMNUM, REFJOURNALID, RECID, 
+                        LANGUAGEID, SALESRESPONSIBLE, DATAAREAID, 
+                        DIMENSION, DIMENSION2_, DIMENSION3_, CREATEDBY, 
+                        CREATEDDATETIME)
+
                     VALUES
                         (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
-                        @SalesType, @RecieptDateRequested, @ShippingDateRequested,
+                        @SalesType, @ReceiptDateRequested, @ShippingDateRequested,
                         @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
-                        @PurchOrderFormNum, @RefJournalID, @RecID, @LanguageID, @SalesResponsible, @DataAreaID, 
-                        @Dimension1, @Dimension2, @Dimension3, @CreatedBy, GETDATE())";
+                        @PurchOrderFormNum, @RefJournalID, @RecID, 
+                        @LanguageID, @SalesResponsible, @DataAreaID, 
+                        @Dimension1, @Dimension2, @Dimension3, @CreatedBy, 
+                        GETDATE())";
 
                     var parametersForInsert = new Dictionary<string, object>
                     {
@@ -287,7 +368,7 @@ namespace ax.Pages
                         { "@DeliverAddress", customer.DeliveryAddress },
                         { "@InvoiceAccount", customer.CustomerAccount },
                         { "@SalesType", 3 },
-                        { "@RecieptDateRequested", customer.PodDate },
+                        { "@ReceiptDateRequested", customer.PodDate },
                         { "@ShippingDateRequested", customer.PodDate },
                         { "@CurrencyCode", "PKR" },
                         { "@DlvMode", "ROAD" },
@@ -295,17 +376,18 @@ namespace ax.Pages
                         { "@InventLocationID", customer.Warehouse },
                         { "@PurchOrderFormNum", customer.Reference },
                         { "@RefJournalID", customer.Reference },
-                        { "@RecID", salesId }, // Using SalesID as RecID for now
+                        { "@RecID", salesTableRecId },
                         { "@LanguageID", "EN-US" },
                         { "@SalesResponsible", "01631" },
                         { "@DataAreaID", "mrp" },
                         { "@Dimension1", "06" },
                         { "@Dimension2", "0600001" },
                         { "@Dimension3", "02" },
-                        { "@CreatedBy", "mohsin" },
+                        { "@CreatedBy", "mziaa" },
                     };
 
-                    //await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
+
+                    await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
                     Console.WriteLine($"\nCustomer data inserted successfully for SalesID: SO-{salesId}\n");
                     Console.WriteLine("---------------------------------------------");
 
@@ -317,8 +399,19 @@ namespace ax.Pages
 
                         Console.WriteLine($"Item: {item.ItemNumber} ({item.ItemName})");
 
+                        long salesLineRecId = await GetNextRecIdAsync("SALESLINE");
+
+                        Console.WriteLine($"REC ID Generated for SALESLINE: {salesLineRecId}");
+
+
+                        // Fetch the CUSTGROUP based on the customer's account
+                        string custGroup = await FetchCustGroupAsync(customer.CustomerAccount);
+                        Console.WriteLine($"Customer Group: {custGroup}");
+
+
                         // Fetch the next INVENTTRANSID
                         string inventTransId = await FetchInventTransIdAsync();
+                        await IncrementInventTransIdAsync();
 
                         // Fetch the INVENTDIMID for the item
                         string inventDimId = await FetchInventDimIdAsync(item);
@@ -328,13 +421,22 @@ namespace ax.Pages
 
                         string insertSalesLineQuery = @"
                         INSERT INTO [MATCOAX].[dbo].[SALESLINE]
-                            (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, PACKINGUNIT, PACKINGUNITQTY,
-                            MASTERUNIT, MASTERUNITQTY, CURRENCYCODE, RECID, DATAAREAID, SALESTYPE, INVENTTRANSID, INVENTDIMID, 
-                            DIMENSION, DIMENSION2_, DIMENSION3_, CreatedDateTime)
+                            (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, 
+                            PACKINGUNIT, PACKINGUNITQTY, MASTERUNIT, MASTERUNITQTY, CURRENCYCODE, 
+                            RECID, DATAAREAID, SALESTYPE, INVENTTRANSID, INVENTDIMID, 
+                            DIMENSION, DIMENSION2_, DIMENSION3_, LINENUM, QTYORDERED, 
+                            CUSTACCOUNT, DELIVERYADDRESS, PRICEUNIT, CUSTGROUP,
+                            RECEIPTDATEREQUESTED, CREATEDDATETIME)
+                        
                         VALUES
-                            (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, @PackingUnit, 
-                            @PackingUnitQty, @MasterUnit, @MasterUnitQty, @CurrencyCode, @RecID, @DataAreaID, @SalesType, @InventTransID, 
-                            @InventDimID, @Dimension1, @Dimension2, @Dimension3, GETDATE())";
+                            (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, 
+                            @PackingUnit, @PackingUnitQty, @MasterUnit, @MasterUnitQty, @CurrencyCode, 
+                            @RecID, @DataAreaID, @SalesType, @InventTransID, @InventDimID, 
+                            @Dimension1, @Dimension2, @Dimension3, @LineNum, @QtyOredered, 
+                            @CustAccount, @DeliveryAddress, @PriceUnit, @CustGroup, 
+                            GETDATE(), GETDATE())";
+
+                        var masterUnitQty = string.IsNullOrEmpty(item.MasterUnitQty) ? 0 : Convert.ToDecimal(item.MasterUnitQty);
 
                         var salesLineParams = new Dictionary<string, object>
                         {
@@ -346,9 +448,9 @@ namespace ax.Pages
                             { "@PackingUnit", item.PackingUnit },
                             { "@PackingUnitQty", item.PackingUnitQty },
                             { "@MasterUnit", item.MasterUnit },
-                            { "@MasterUnitQty", item.MasterUnitQty },
+                            { "@MasterUnitQty", masterUnitQty },
                             { "@CurrencyCode", "PKR" },
-                            { "@RecID", salesId }, // Assuming same RecID as Sales Order
+                            { "@RecID", salesLineRecId }, 
                             { "@DataAreaID", "mrp" },
                             { "@SalesType", 3 },
                             { "@InventTransID", inventTransId},
@@ -356,12 +458,17 @@ namespace ax.Pages
                             { "@Dimension1", "06" },
                             { "@Dimension2", "0600001" },
                             { "@Dimension3", "02" },
-
+                            { "@LineNum", 1 },
+                            { "@QtyOredered", item.Quantity },
+                            { "@CustAccount", customer.CustomerAccount },
+                            { "@DeliveryAddress", customer.DeliveryAddress },
+                            { "@PriceUnit", 1 },
+                            { "@CustGroup", custGroup },
                         };
 
-                        //await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
+                        await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
                         Console.WriteLine($"\nSales Line inserted successfully for SalesID: SO-{salesId}, Item: {item.ItemNumber}\n");
-                        await Task.Delay(1000);
+                        await Task.Delay(2000);
                     }
                     catch (Exception ex)
                     {
