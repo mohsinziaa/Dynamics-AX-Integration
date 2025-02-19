@@ -479,15 +479,14 @@ namespace ax.Pages
                             // Insert Invent Trans record
                             string insertInventTransQuery = @"
                             INSERT INTO [MATCOAX].[dbo].[INVENTTRANS]
-                                (ITEMID, TRANSREFID, CUSTVENDAC, INVENTTRANSID, 
-                                CURRENCYCODE, TRANSTYPE
-                                
+                            (ITEMID, TRANSREFID, CUSTVENDAC, INVENTTRANSID, 
+                            INVENTDIMID, CURRENCYCODE, TRANSTYPE, 
 
-                                QTY, DATAAREAID, RECID, DATEPHYSICAL, DATEFINANCIAL) 
+                            QTY, DATAAREAID, RECID, DATEPHYSICAL, DATEFINANCIAL) 
 
                             VALUES
                                 (@ItemID, @TransrefID, @CustVendAcc, @InventTransID,
-                                @CurrencyCode, @TransType
+                                @InventDimID, @CurrencyCode, @TransType,
 
                                 @Qty, @DataAreaID, @RecID, GETDATE(), GETDATE())";
 
@@ -497,6 +496,7 @@ namespace ax.Pages
                                 { "@TransrefID", "SO-" + salesId.ToString() },
                                 { "@CustVendAcc", customer.CustomerAccount },
                                 { "@InventTransID", inventTransId },
+                                { "@InventDimID", inventDimId },
 
                                 { "@CurrencyCode", "PKR" },
                                 { "@TransType", 3 },
