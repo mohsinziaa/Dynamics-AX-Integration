@@ -25,7 +25,6 @@ namespace ax.Pages
         {
             try
             {
-                _logger.LogInformation("Fetching items from the database...");
                 var items = await _dbService.ExecuteQueryAsync<itemInfo>(
                     "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
                     reader => new itemInfo
@@ -46,7 +45,7 @@ namespace ax.Pages
         public JsonResult OnGetFetchSites()
         {
             // Example: Set SiteList after fetching items from database (if needed)
-            SiteList = new List<string> { "MATCO01", "MATCO02", "MATCO13", "RIVIANA", "GODOWNS" };
+            SiteList = new List<string> { "MATCO02", "MATCO03", "MATCO13", "RIVIANA", "GODOWNS" };
             return new JsonResult(SiteList);
         }
 
@@ -146,12 +145,12 @@ namespace ax.Pages
         {
             try
             {
-                _logger.LogInformation($"Fetching master units and quantity for ItemNumber: {itemNumber}");
+                //_logger.LogInformation($"Fetching master units and quantity for ItemNumber: {itemNumber}");
 
                 // Fetch data from MASTERBAGSDETAIL and return the result
                 var result = await FetchMasterUnitsAndQtyAsync(itemNumber);
 
-                _logger.LogInformation($"Fetched Data - MasterUnit: {result.MasterUnit}, MasterQty: {result.MasterQty}");
+                //_logger.LogInformation($"Fetched Data - MasterUnit: {result.MasterUnit}, MasterQty: {result.MasterQty}");
 
                 return new JsonResult(new
                 {

@@ -329,7 +329,7 @@ namespace ax.Pages
                         (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,    
                         SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,    
                         CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
-                        PURCHORDERFORMNUM, REFJOURNALID, RECID, 
+                        PURCHORDERFORMNUM, CUSTOMERREF, RECID, 
                         LANGUAGEID, SALESRESPONSIBLE, DATAAREAID, 
                         DIMENSION, DIMENSION2_, DIMENSION3_, CREATEDBY, 
                         CREATEDDATETIME)
@@ -338,7 +338,7 @@ namespace ax.Pages
                         (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
                         @SalesType, @ReceiptDateRequested, @ShippingDateRequested,
                         @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
-                        @PurchOrderFormNum, @RefJournalID, @RecID, 
+                        @PurchOrderFormNum, @CustomerRef, @RecID, 
                         @LanguageID, @SalesResponsible, @DataAreaID, 
                         @Dimension1, @Dimension2, @Dimension3, @CreatedBy, 
                         GETDATE())";
@@ -357,8 +357,8 @@ namespace ax.Pages
                         { "@DlvMode", "ROAD" },
                         { "@InventSiteID", customer.Site },
                         { "@InventLocationID", customer.Warehouse },
-                        { "@PurchOrderFormNum", customer.Reference },
-                        { "@RefJournalID", customer.Reference },
+                        { "@PurchOrderFormNum", customer.CustomerRequisition },
+                        { "@CustomerRef", customer.Reference },
                         { "@RecID", salesTableRecId },
                         { "@LanguageID", "EN-US" },
                         { "@SalesResponsible", "01631" },

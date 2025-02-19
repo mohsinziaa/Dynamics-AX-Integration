@@ -9,14 +9,15 @@ namespace ax.Pages
     public class IndexModel : PageModel
     {
         private readonly DatabaseService _dbService;
-
+        private readonly ILogger<IndexModel> _logger;
         public customerInfo CustomerData { get; private set; } = new();
+        public List<string> SiteList { get; private set; } = new List<string>();
 
-        public IndexModel(DatabaseService dbService)
+        public IndexModel(DatabaseService dbService, ILogger<IndexModel> logger)
         {
             _dbService = dbService;
+            _logger = logger;
         }
-
         public async Task<JsonResult> OnGetFetchCustomerData(string customerName)
         {
             var customerData = await FetchCustomerDataAsync(customerName);
@@ -45,6 +46,44 @@ namespace ax.Pages
 
             return result.FirstOrDefault();
         }
+
+        public JsonResult OnGetFetchSites()
+        {
+            // Example: Set SiteList after fetching items from database (if needed)
+            SiteList = new List<string> { "MATCO02", "MATCO03", "MATCO13", "RIVIANA", "GODOWNS" };
+            return new JsonResult(SiteList);
+        }
+
+        public async Task<JsonResult> OnGetFetchWarehouses(string siteName)
+        {
+            try
+            {
+                var warehousesList = await FetchWarehousesAsync(siteName);
+                return new JsonResult(warehousesList);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching warehouses: {ex.Message}");
+                return new JsonResult(new { error = "An error occurred while fetching warehouses." });
+            }
+        }
+
+        private async Task<List<string>> FetchWarehousesAsync(string siteName)
+        {
+            const string sql = "SELECT DISTINCT INVENTLOCATIONID FROM InventDim WHERE INVENTSITEID = @SiteName AND INVENTLOCATIONID <> ' '";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@SiteName", siteName }
+            };
+
+            var warehousesList = await _dbService.ExecuteQueryAsync<string>(
+                sql,
+                reader => reader["INVENTLOCATIONID"].ToString(),
+                parameters);
+
+            return warehousesList;
+        }
+
     }
 
     public class customerInfo

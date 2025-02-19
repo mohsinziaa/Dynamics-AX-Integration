@@ -40,17 +40,11 @@
         <div class="col">
             <label for="site" class="form-label">Site</label>
             <select class="form-select" id="site">
-                <option value="MATCO01">MATCO01</option>
-                <option value="MATCO02">MATCO02</option>
-                <option value="MATCO13">MATCO13</option>
-                <option value="RIVIANA">RIVIANA</option>
-                <option value="GODOWNS" selected>GODOWNS</option>
             </select>
         </div>
         <div class="col">
             <label for="warehouse" class="form-label">Warehouse</label>
             <select class="form-select" id="warehouse" readonly>
-                <option value="SD-Main">SD-Main</option>
             </select>
         </div>
     </div>
@@ -81,6 +75,63 @@
 
 <script>
     $(document).ready(function () {
+
+        // Fetch sites and populate site dropdown
+        $.ajax({
+            url: "/Index?handler=FetchSites",
+            type: "GET",
+            success: function (response) {
+
+                console.log(response);
+
+                let siteDropdown = $("select#site");
+                siteDropdown.empty();
+
+                response.forEach(site => {
+                    siteDropdown.append(`<option value="${site}">${site}</option>`);
+                });
+
+                siteDropdown.val("MATCO02").change();
+                },    
+            error: function () {
+                alert("Error fetching sites");
+            },
+        });
+
+        // Event listener for site selection change
+        $("select#site").on('change', function () {
+            updateWarehouses($(this).val());
+        });
+
+        // Function to update warehouses based on selected site
+        function updateWarehouses(siteName) {
+            if (!siteName) return;
+
+            $.ajax({
+                url: "/Index?handler=FetchWarehouses",
+                type: "GET",
+                data: { siteName: siteName },
+                success: function (response) {
+                    let warehouseDropdown = $("select#warehouse");
+
+                    warehouseDropdown.empty();
+
+                    response.forEach(function (warehouse) {
+                        warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
+                    });
+
+                    // if(siteName == "GODOWNS"){
+                    //     warehouseDropdown.val("SD-Main").change();
+                    // }
+
+                },
+                error: function () {
+                    alert("Error fetching warehouses");
+                }
+            });
+        }
+
+
         // Set default date to today's date
         $("#podDate").val(new Date().toISOString().split('T')[0]);
 
@@ -113,6 +164,7 @@
                 }
             });
         }
+
 
         // Function to enable/disable the "Create Items" button based on required fields
         function enableCreateButton() {
@@ -158,7 +210,7 @@
             // Simulate a delay to show the loading spinner
             setTimeout(function() {
                 window.location.href = "/Items";
-            }, 2000);
+            }, 1000);
         });
     });
 </script>

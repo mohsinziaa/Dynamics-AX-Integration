@@ -77,7 +77,7 @@
 <div class="search-container d-flex justify-content-between align-items-center">
     <input type="text" class="form-control w-25" id="customerDetails" readonly>
     <div class="d-flex ms-auto">
-        <input type="text" id="itemSearch" class="form-control me-2" placeholder="Search by Item Name" autocomplete="off">
+        <input type="text" id="itemSearch" class="form-control me-2" placeholder="Search by Item Number" autocomplete="off">
         <button id="searchButton" class="btn btn-primary">Search</button>
     </div>
 </div>
@@ -114,12 +114,10 @@
                     <td>@item.itemName</td>
                     <td>
                         <select class="form-select site-dropdown">
-                            <option>MATCO01</option>
                         </select>
                     </td>
                     <td>
                         <select class="form-select warehouse-dropdown">
-                            <option value="Dock-01">Dock-01</option>
                         </select>
                     </td>
                     <td>
@@ -342,9 +340,9 @@
 
             $("#itemList tbody tr").each(function () {
 
-                let itemName = $(this).find("td:eq(2)").text().toLowerCase();
+                let itemNumber = $(this).find("td:eq(1)").text().toLowerCase();
 
-                if (itemName.includes(searchQuery)) {
+                if (itemNumber.includes(searchQuery)) {
                     $(this).show();
                     foundMatch = true;
                 } else {
@@ -363,21 +361,6 @@
                 $("#noRecordsMessage").remove();
             }
         });
-
-        // Select all checkboxes when the header checkbox is clicked
-        // $("#selectAll").on("click", function () {
-        //     $(".record-checkbox").prop("checked", $(this).prop("checked"));
-
-        // });
-
-        // Uncheck "Select All" if any individual checkbox is unchecked
-        // $(document).on("click", ".record-checkbox", function () {
-        //     if (!$(this).prop("checked")) {
-        //         $("#selectAll").prop("checked", false);
-        //     } else if ($(".record-checkbox:checked").length === $(".record-checkbox").length) {
-        //         $("#selectAll").prop("checked", true);
-        //     }
-        // });
 
     if (customerData) {
         console.log(customerData);
@@ -503,7 +486,7 @@
             // Simulate a delay to show the loading spinner
             setTimeout(function() {
                 window.location.href = "/Checkout";
-            }, 2000);
+            }, 1000);
         });
 
 
