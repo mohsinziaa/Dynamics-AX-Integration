@@ -27,12 +27,11 @@ namespace ax.Pages
 
         public void OnGet()
         {
-            // No changes needed for the OnGet method
+
         }
 
         public async Task<IActionResult> OnPostCreateSalesOrder([FromBody] OrderData orderData)
         {
-            Console.WriteLine("This is from POST");
 
             if (orderData == null)
             {
@@ -43,27 +42,11 @@ namespace ax.Pages
             // Store the order data in the in-memory database
             OrderDatabase.Add(orderData);
 
-            // Log the customer data and items to the console
-            //_logger.LogInformation($"Received customer data: {JsonSerializer.Serialize(orderData.Customer)}");
-            //_logger.LogInformation($"Received items data: {JsonSerializer.Serialize(orderData.Items)}");
-
             // Simulate processing (printing the stored data)
             _logger.LogInformation("Processing order...");
 
             // Insert customer data into SALESTABLE
             await InsertCustomerDataAsync(orderData.Customer, orderData.Items);
-
-            //// Print the stored data to the console (for demonstration purposes)
-            //Console.WriteLine("\nStored Orders");
-            //foreach (var order in OrderDatabase)
-            //{
-            //    Console.WriteLine($"Customer: {order.Customer.Name}, Customer Account: {order.Customer.CustomerAccount}");
-            //    foreach (var item in order.Items)
-            //    {
-            //        Console.WriteLine($"Item: {item.ItemName}, Name: {item.ItemName}");
-            //    }
-            //}
-
 
             return new JsonResult(new { message = "Order data received successfully." });
         }
@@ -335,7 +318,7 @@ namespace ax.Pages
                     int salesId = await FetchSalesIdAsync();
                     await IncrementSalesIdAsync();
                     long salesTableRecId = await GetNextRecIdAsync("SALESTABLE");
-                    
+
 
                     Console.WriteLine($"Sales ID Generated: SO-{salesId}");
                     Console.WriteLine($"REC ID Generated for SALESTABLE: {salesTableRecId}");
@@ -386,40 +369,44 @@ namespace ax.Pages
                         { "@CreatedBy", "mziaa" },
                     };
 
+                    await Task.Delay(1000); 
+                    int salesTableResult = await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
 
-                    await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
-                    Console.WriteLine($"\nCustomer data inserted successfully for SalesID: SO-{salesId}\n");
-                    Console.WriteLine("---------------------------------------------");
-
-                    // Insert Sales Line for the item
-                    try
+                    if (salesTableResult > 0)
                     {
-                        Console.WriteLine("Inserting Sales Lines:");
+
+                        Console.WriteLine($"\nCustomer data inserted successfully for SalesID: SO-{salesId}\n");
                         Console.WriteLine("---------------------------------------------");
 
-                        Console.WriteLine($"Item: {item.ItemNumber} ({item.ItemName})");
+                        // Insert Sales Line for the item
+                        try
+                        {
+                            Console.WriteLine("Inserting Sales Lines:");
+                            Console.WriteLine("---------------------------------------------");
 
-                        long salesLineRecId = await GetNextRecIdAsync("SALESLINE");
+                            Console.WriteLine($"Item: {item.ItemNumber} ({item.ItemName})");
 
-                        Console.WriteLine($"REC ID Generated for SALESLINE: {salesLineRecId}");
+                            long salesLineRecId = await GetNextRecIdAsync("SALESLINE");
 
-
-                        // Fetch the CUSTGROUP based on the customer's account
-                        string custGroup = await FetchCustGroupAsync(customer.CustomerAccount);
-                        Console.WriteLine($"Customer Group: {custGroup}");
+                            Console.WriteLine($"REC ID Generated for SALESLINE: {salesLineRecId}");
 
 
-                        // Fetch the next INVENTTRANSID
-                        string inventTransId = await FetchInventTransIdAsync();
-                        await IncrementInventTransIdAsync();
+                            // Fetch the CUSTGROUP based on the customer's account
+                            string custGroup = await FetchCustGroupAsync(customer.CustomerAccount);
+                            Console.WriteLine($"Customer Group: {custGroup}");
 
-                        // Fetch the INVENTDIMID for the item
-                        string inventDimId = await FetchInventDimIdAsync(item);
 
-                        Console.WriteLine($"      TransID: {inventTransId}");
-                        Console.WriteLine($"      InventDimID: {inventDimId}");
+                            // Fetch the next INVENTTRANSID
+                            string inventTransId = await FetchInventTransIdAsync();
+                            await IncrementInventTransIdAsync();
 
-                        string insertSalesLineQuery = @"
+                            // Fetch the INVENTDIMID for the item
+                            string inventDimId = await FetchInventDimIdAsync(item);
+
+                            Console.WriteLine($"      TransID: {inventTransId}");
+                            Console.WriteLine($"      InventDimID: {inventDimId}");
+
+                            string insertSalesLineQuery = @"
                         INSERT INTO [MATCOAX].[dbo].[SALESLINE]
                             (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, 
                             PACKINGUNIT, PACKINGUNITQTY, MASTERUNIT, MASTERUNITQTY, CURRENCYCODE, 
@@ -436,9 +423,9 @@ namespace ax.Pages
                             @CustAccount, @DeliveryAddress, @PriceUnit, @CustGroup, 
                             GETDATE(), GETDATE())";
 
-                        var masterUnitQty = string.IsNullOrEmpty(item.MasterUnitQty) ? 0 : Convert.ToDecimal(item.MasterUnitQty);
+                            var masterUnitQty = string.IsNullOrEmpty(item.MasterUnitQty) ? 0 : Convert.ToDecimal(item.MasterUnitQty);
 
-                        var salesLineParams = new Dictionary<string, object>
+                            var salesLineParams = new Dictionary<string, object>
                         {
                             { "@SalesId", "SO-" + salesId.ToString() },
                             { "@ItemID", item.ItemNumber },
@@ -450,7 +437,7 @@ namespace ax.Pages
                             { "@MasterUnit", item.MasterUnit },
                             { "@MasterUnitQty", masterUnitQty },
                             { "@CurrencyCode", "PKR" },
-                            { "@RecID", salesLineRecId }, 
+                            { "@RecID", salesLineRecId },
                             { "@DataAreaID", "mrp" },
                             { "@SalesType", 3 },
                             { "@InventTransID", inventTransId},
@@ -466,68 +453,87 @@ namespace ax.Pages
                             { "@CustGroup", custGroup },
                         };
 
-                        await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
-                        Console.WriteLine($"\nSales Line inserted successfully for SalesID: SO-{salesId}, Item: {item.ItemNumber}\n");
-                        await Task.Delay(2000);
+                            await Task.Delay(1000);
+                            int salesLineResult = await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
 
-
-                        try
-                        {
-                            Console.WriteLine("Inserting Invent Trans:");
-                            Console.WriteLine("---------------------------------------------");
-
-                            // Insert Invent Trans record
-                            string insertInventTransQuery = @"
-                            INSERT INTO [MATCOAX].[dbo].[INVENTTRANS]
-                            (ITEMID, TRANSREFID, CUSTVENDAC, INVENTTRANSID, 
-                            INVENTDIMID, CURRENCYCODE, TRANSTYPE, 
-
-                            QTY, DATAAREAID, RECID, DATEPHYSICAL, DATEFINANCIAL) 
-
-                            VALUES
-                                (@ItemID, @TransrefID, @CustVendAcc, @InventTransID,
-                                @InventDimID, @CurrencyCode, @TransType,
-
-                                @Qty, @DataAreaID, @RecID, GETDATE(), GETDATE())";
-
-                            var inventTransParams = new Dictionary<string, object>
+                            if (salesLineResult > 0)
                             {
-                                { "@ItemID", item.ItemNumber },
-                                { "@TransrefID", "SO-" + salesId.ToString() },
-                                { "@CustVendAcc", customer.CustomerAccount },
-                                { "@InventTransID", inventTransId },
-                                { "@InventDimID", inventDimId },
 
-                                { "@CurrencyCode", "PKR" },
-                                { "@TransType", 3 },
+                                Console.WriteLine($"\nSales Line inserted successfully for SalesID: SO-{salesId}, Item: {item.ItemNumber}\n");
 
-                                { "@Qty", item.Quantity },
-                                { "@DataAreaID", "mrp" },
-                                { "@RecID", salesLineRecId },
-                            };
+                                Console.WriteLine("---------------------------------------------");
 
-                            await _dbService.ExecuteNonQueryAsync(insertInventTransQuery, inventTransParams);
-                            Console.WriteLine("Invent Trans inserted successfully");
+                                try
+                                {
+                                    Console.WriteLine("Inserting Invent Trans");
+                                    Console.WriteLine("---------------------------------------------\n");
+                                    Console.WriteLine($"TransID: {inventTransId}");
+                                    Console.WriteLine($"InventDimID: {inventDimId}");
+                                    Console.WriteLine($"RecID: {salesLineRecId}");
+
+                                    // Insert Invent Trans record
+                                    string insertInventTransQuery = @"
+                                    INSERT INTO [MATCOAX].[dbo].[INVENTTRANS]
+                                    (ITEMID, TRANSREFID, CUSTVENDAC, INVENTTRANSID, 
+                                    INVENTDIMID, CURRENCYCODE, TRANSTYPE, 
+
+                                    QTY, DATAAREAID, RECID, DATEPHYSICAL) 
+
+                                    VALUES
+                                        (@ItemID, @TransrefID, @CustVendAcc, @InventTransID,
+                                        @InventDimID, @CurrencyCode, @TransType,
+
+                                        @Qty, @DataAreaID, @RecID, GETDATE())";
+
+                                    var inventTransParams = new Dictionary<string, object>
+                                    {
+                                        { "@ItemID", item.ItemNumber },
+                                        { "@TransrefID", "SO-" + salesId.ToString() },
+                                        { "@CustVendAcc", customer.CustomerAccount },
+                                        { "@InventTransID", inventTransId },
+                                        { "@InventDimID", inventDimId },
+
+                                        { "@CurrencyCode", "PKR" },
+                                        { "@TransType", 0 },
+
+                                        { "@Qty", item.Quantity },
+                                        { "@DataAreaID", "mrp" },
+                                        { "@RecID", salesLineRecId },
+                                    };
+
+                                    await Task.Delay(1000);
+                                    await _dbService.ExecuteNonQueryAsync(insertInventTransQuery, inventTransParams);
+                                    Console.WriteLine($"\nInvent Trans inserted successfully for SO-{salesId}\n");
+                                }
+
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Error creating Invent Trans for Item {item.ItemNumber}: {ex.Message}");
+                                }
+
+
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error creating Sales Line for Item {item.ItemNumber}");
+                            }
                         }
+
 
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error creating Invent Trans for Item {item.ItemNumber}: {ex.Message}");
+                            Console.WriteLine($"Error creating Sales Line for Item {item.ItemNumber}: {ex.Message}");
                         }
-
                     }
-
-
-                    catch (Exception ex)
+                    else
                     {
-                        Console.WriteLine($"Error creating Sales Line for Item {item.ItemNumber}: {ex.Message}");
+                        Console.WriteLine($"Error inserting Sales Order");
                     }
+
+                    Console.WriteLine("---------------------------------------------");
+                    Console.WriteLine("Sales Order Processing Completed!");
+                    Console.WriteLine("---------------------------------------------\n");
                 }
-
-                Console.WriteLine("---------------------------------------------");
-                Console.WriteLine("Sales Order Processing Completed!");
-                Console.WriteLine("---------------------------------------------\n");
-
             }
             catch (Exception ex)
             {

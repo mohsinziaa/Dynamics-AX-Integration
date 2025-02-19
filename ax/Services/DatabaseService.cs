@@ -60,8 +60,10 @@ namespace ax.Services
         }
 
         // Method to execute a query that doesn't return any data (for INSERT, UPDATE, DELETE)
-        public async Task ExecuteNonQueryAsync(string sql, Dictionary<string, object>? parameters = null)
+        public async Task<int> ExecuteNonQueryAsync(string sql, Dictionary<string, object>? parameters = null)
         {
+            int rowsAffected = 0;
+
             try
             {
                 await using var connection = await GetConnectionAsync();
@@ -76,12 +78,15 @@ namespace ax.Services
                     }
                 }
 
-                await command.ExecuteNonQueryAsync();
+                rowsAffected = await command.ExecuteNonQueryAsync(); // Get affected rows
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Database command failed: {ex.Message}");
             }
+
+            return rowsAffected; // Return affected rows count
         }
+
     }
 }
