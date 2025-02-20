@@ -476,13 +476,11 @@ namespace ax.Pages
                                     INSERT INTO [MATCOAX].[dbo].[INVENTTRANS]
                                     (ITEMID, TRANSREFID, CUSTVENDAC, INVENTTRANSID, 
                                     INVENTDIMID, CURRENCYCODE, TRANSTYPE, 
-
                                     QTY, DATAAREAID, RECID, DATEPHYSICAL) 
 
                                     VALUES
                                         (@ItemID, @TransrefID, @CustVendAcc, @InventTransID,
                                         @InventDimID, @CurrencyCode, @TransType,
-
                                         @Qty, @DataAreaID, @RecID, GETDATE())";
 
                                     var inventTransParams = new Dictionary<string, object>
@@ -492,10 +490,8 @@ namespace ax.Pages
                                         { "@CustVendAcc", customer.CustomerAccount },
                                         { "@InventTransID", inventTransId },
                                         { "@InventDimID", inventDimId },
-
                                         { "@CurrencyCode", "PKR" },
                                         { "@TransType", 0 },
-
                                         { "@Qty", item.Quantity },
                                         { "@DataAreaID", "mrp" },
                                         { "@RecID", salesLineRecId },
@@ -533,6 +529,7 @@ namespace ax.Pages
                     Console.WriteLine("---------------------------------------------");
                     Console.WriteLine("Sales Order Processing Completed!");
                     Console.WriteLine("---------------------------------------------\n");
+
                 }
             }
             catch (Exception ex)
