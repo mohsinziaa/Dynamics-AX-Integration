@@ -378,6 +378,11 @@
         row.find(".master-unit-dropdown").val(selectedUnit).change();
     });
 
+    // Function to extract numeric value from a unit string
+    function extractNumericValue(unitString) {
+        let match = unitString.match(/[\d.]+/);
+        return match ? parseFloat(match[0]) : NaN;
+    }
 
     // Copy Quantity to Packing Quantity on Tab
     $(document).on("keydown", ".quantity-input", function (e) {
@@ -400,7 +405,17 @@
 
                     // Set the Master Qty input field
                     if (response.masterQty && response.masterUnit) {
-                        masterQtyInput.val(response.masterQty);
+
+                    let masterUnit = extractNumericValue(response.masterUnit);
+                    console.log("Extracted Master Unit:", masterUnit);
+
+                    if (!isNaN(masterUnit) && masterUnit > 0) {
+                        let masterUnitQty = parseFloat(quantityValue) / masterUnit;
+                        console.log("Calculated Master Unit Qty:", masterUnitQty);
+                        masterQtyInput.val(masterUnitQty); // Set the calculated value
+                    } else {
+                        masterQtyInput.val(""); // If extraction fails, set empty
+                    }
                         masterUnitDropdown.val(response.masterUnit).change();
                     } else {
                         masterQtyInput.val(""); // Set empty if no quantity available
