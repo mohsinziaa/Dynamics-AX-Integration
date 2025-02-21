@@ -78,7 +78,6 @@
     <input type="text" class="form-control w-25" id="customerDetails" readonly>
     <div class="d-flex ms-auto">
         <input type="text" id="itemSearch" class="form-control me-2" placeholder="Search by Item Number" autocomplete="off">
-        <button id="searchButton" class="btn btn-primary">Search</button>
     </div>
 </div>
 
@@ -276,50 +275,39 @@
             });
         }
 
-        // Trigger search on pressing Enter
-        $("#itemSearch").on("keypress", function (e) {
-            if (e.which === 13) {
-                e.preventDefault();
-                $("#searchButton").click();
-            }
-        });
-        
-        // Search functionality
-        $("#searchButton").on("click", function () {
-            let searchQuery = $("#itemSearch").val().toLowerCase();
-            if (!searchQuery) {
-                $("#generateSObtn").show();
-                $("#itemList tr").show();
-                $("#noRecordsMessage").remove();
-                return;
-            }
+    $("#itemSearch").on("input", function () {
+        let searchQuery = $(this).val().toLowerCase();
 
-            let foundMatch = false;
-            $("#generateSObtn").hide();
+        if (!searchQuery) {
+            $("#generateSObtn").show();
+            $("#itemList tr").show();
+            $("#noRecordsMessage").remove();
+            return;
+        }
 
-            $("#itemList tbody tr").each(function () {
+        let foundMatch = false;
+        $("#generateSObtn").hide();
 
-                let itemNumber = $(this).find("td:eq(1)").text().toLowerCase();
+        $("#itemList tbody tr").each(function () {
+            let itemNumber = $(this).find("td:eq(1)").text().toLowerCase();
 
-                if (itemNumber.includes(searchQuery)) {
-                    $(this).show();
-                    foundMatch = true;
-                } else {
-                    $(this).hide();
-                }
-            });
-
-            if (!foundMatch) {
-                // if ($("#noRecordsMessage").length === 0) {
-                    const messageRow = `<tr id="noRecordsMessage">
-                                            <td colspan="5" class="text-center text-danger">No records found</td>
-                                          </tr>`;
-                    $("#itemList tbody").append(messageRow);
-                // }
+            if (itemNumber.includes(searchQuery)) {
+                $(this).show();
+                foundMatch = true;
             } else {
-                $("#noRecordsMessage").remove();
+                $(this).hide();
             }
         });
+
+        if (!foundMatch) {
+            const messageRow = `<tr id="noRecordsMessage">
+                                    <td colspan="5" class="text-center text-danger">No records found</td>
+                                </tr>`;
+            $("#itemList tbody").append(messageRow);
+        } else {
+            $("#noRecordsMessage").remove();
+        }
+    });
 
     if (customerData) {
         console.log(customerData);

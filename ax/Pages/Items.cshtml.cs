@@ -99,8 +99,8 @@ namespace ax.Pages
                 SELECT DISTINCT WMSLOCATIONID 
                 FROM INVENTDIM 
                 WHERE INVENTSITEID = @SiteName 
-                  AND INVENTLOCATIONID = @WarehouseName 
-                  AND LTRIM(RTRIM(WMSLOCATIONID)) <> ''";
+                AND INVENTLOCATIONID = @WarehouseName 
+                AND LTRIM(RTRIM(WMSLOCATIONID)) <> ''";
 
             var parameters = new Dictionary<string, object>
             {
