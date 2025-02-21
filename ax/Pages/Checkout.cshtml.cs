@@ -29,29 +29,6 @@ namespace ax.Pages
         {
 
         }
-
-        public async Task<IActionResult> OnPostCreateSalesOrder([FromBody] OrderData orderData)
-        {
-
-            if (orderData == null)
-            {
-                _logger.LogWarning("Received invalid order data.");
-                return new JsonResult(new { error = "Invalid order data" }) { StatusCode = 400 };
-            }
-
-            // Store the order data in the in-memory database
-            OrderDatabase.Add(orderData);
-
-            // Simulate processing (printing the stored data)
-            _logger.LogInformation("Processing order...");
-
-            // Insert customer data into SALESTABLE
-            await InsertCustomerDataAsync(orderData.Customer, orderData.Items);
-
-            return new JsonResult(new { message = "Order data received successfully." });
-        }
-
-
         private async Task<long> GetNextRecIdAsync(string tableName)
         {
             try
@@ -302,8 +279,35 @@ namespace ax.Pages
             }
         }
 
-        private async Task InsertCustomerDataAsync(CustomerData customer, List<ItemData> items)
+        public async Task<IActionResult> OnPostCreateSalesOrder([FromBody] OrderData orderData)
         {
+
+            if (orderData == null)
+            {
+                _logger.LogWarning("Received invalid order data.");
+                return new JsonResult(new { error = "Invalid order data" }) { StatusCode = 400 };
+            }
+
+            // Store the order data in the in-memory database
+            OrderDatabase.Add(orderData);
+
+            // Simulate processing (printing the stored data)
+            _logger.LogInformation("Processing order...");
+
+            // Insert customer data into SALESTABLE
+            List<string> salesOrders = await InsertCustomerDataAsync(orderData.Customer, orderData.Items);
+
+            // Return JSON response including salesOrders
+            return new JsonResult(new
+            {
+                message = "Order data received successfully.",
+                salesOrders = salesOrders
+            });
+        }
+
+        private async Task<List<string>> InsertCustomerDataAsync(CustomerData customer, List<ItemData> items)
+        {
+            List<string> salesOrders = new List<string>(); // Store created Sales IDs
             try
             {
                 foreach (var item in items)
@@ -374,7 +378,7 @@ namespace ax.Pages
 
                     if (salesTableResult > 0)
                     {
-
+                        salesOrders.Add("SO-" + salesId.ToString());
                         Console.WriteLine($"\nCustomer data inserted successfully for SalesID: SO-{salesId}\n");
                         Console.WriteLine("---------------------------------------------");
 
@@ -536,6 +540,8 @@ namespace ax.Pages
             {
                 Console.WriteLine($"Error inserting Sales Order: {ex.Message}");
             }
+
+            return salesOrders;
         }
 
     }

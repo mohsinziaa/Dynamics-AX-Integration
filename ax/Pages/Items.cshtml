@@ -310,12 +310,12 @@
             });
 
             if (!foundMatch) {
-                if ($("#noRecordsMessage").length === 0) {
+                // if ($("#noRecordsMessage").length === 0) {
                     const messageRow = `<tr id="noRecordsMessage">
                                             <td colspan="5" class="text-center text-danger">No records found</td>
                                           </tr>`;
                     $("#itemList tbody").append(messageRow);
-                }
+                // }
             } else {
                 $("#noRecordsMessage").remove();
             }

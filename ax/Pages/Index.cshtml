@@ -120,9 +120,8 @@
                         warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
                     });
 
-                    // if(siteName == "GODOWNS"){
-                    //     warehouseDropdown.val("SD-Main").change();
-                    // }
+                    // Select the last option by default (if available)
+                    warehouseDropdown.find("option:last").prop("selected", true);
 
                 },
                 error: function () {
