@@ -127,22 +127,15 @@
                     </td>
 
                     <td>
-                        <select class="form-select unit-dropdown">
-                            <option value="KG">KG</option>
-                            <option value="Pcs">Pcs</option>
-                            <option value="Ton">Ton</option>
-                        </select>
+                        <input type="text" class="form-control unit-input" min="1">
                     </td>
+
                     <td>
                         <input type="text" class="form-control quantity-input" min="1">
                     </td>
 
                     <td>
-                        <select class="form-select packing-unit-dropdown">
-                            <option value="KG">KG</option>
-                            <option value="Pcs">Pcs</option>
-                            <option value="Ton">Ton</option>
-                        </select>
+                        <input type="text" class="form-control packing-unit-input" min="1">
                     </td>
 
                     <td>
@@ -150,9 +143,7 @@
                     </td>
 
                     <td>
-                        <select class="form-select master-unit-dropdown">
-                            <option value="" selected></option>
-                        </select>
+                        <input type="text" class="form-control master-unit-input" min="1">
                     </td>
 
                     <td>
@@ -176,6 +167,7 @@
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+
     $(document).ready(function () {
 
         // Fetch customer data from sessionStorage
@@ -204,39 +196,6 @@
             },
             error: function () {
                 alert("Error fetching sites");
-            },
-        });
-
-
-        // Fetch Units
-        $.ajax({
-            url: "/Items?handler=FetchUnits",
-            type: "GET",
-            success: function (response) {
-
-                console.log(response);
-
-                let unitDropdowns = $("select.unit-dropdown");
-                unitDropdowns.empty();
-
-                let packingUnitDropdowns = $("select.packing-unit-dropdown");
-                packingUnitDropdowns.empty();
-
-                let masterUnitDropdowns = $("select.master-unit-dropdown");
-                masterUnitDropdowns.empty();
-
-
-                response.forEach(unit => {
-                    unitDropdowns.append(`<option value="${unit}">${unit}</option>`);
-                    packingUnitDropdowns.append(`<option value="${unit}">${unit}</option>`);
-                    masterUnitDropdowns.append(`<option value="${unit}">${unit}</option>`);
-                });
-
-                unitDropdowns.val("25KGBAG").change();
-
-            },
-            error: function () {
-                alert("Error fetching units");
             },
         });
 
@@ -371,11 +330,11 @@
 
 
     // Copy Unit to Packing Unit on Tab
-    $(document).on("change", ".unit-dropdown", function () {
+    $(document).on("change", ".unit-input", function () {
         let row = $(this).closest("tr");
         let selectedUnit = $(this).val();
-        row.find(".packing-unit-dropdown").val(selectedUnit).change();
-        row.find(".master-unit-dropdown").val(selectedUnit).change();
+        row.find(".packing-unit-input").val(selectedUnit);
+        row.find(".master-unit-input").val(selectedUnit);
     });
 
     // Function to extract numeric value from a unit string
@@ -388,7 +347,7 @@
     $(document).on("keydown", ".quantity-input", function (e) {
         if (e.key === "Tab") {
             let row = $(this).closest("tr");
-            let masterUnitDropdown = row.find("select.master-unit-dropdown");
+            let masterUnitInput = row.find(".master-unit-input");
             let masterQtyInput = row.find(".master-unit-qty-input");
             let quantityValue = $(this).val().trim();
             row.find(".packing-unit-qty-input").val(quantityValue);
@@ -416,7 +375,7 @@
                     } else {
                         masterQtyInput.val(""); // If extraction fails, set empty
                     }
-                        masterUnitDropdown.val(response.masterUnit).change();
+                        masterUnitInput.val(response.masterUnit).change();
                     } else {
                         masterQtyInput.val(""); // Set empty if no quantity available
                     }
@@ -438,6 +397,8 @@
 
         $(".record-checkbox").on("change", function () {
 
+            fetchItemUnit($(this));
+
             toggleGenerateSOButton();
 
             let tableBody = $("#itemList tbody");
@@ -452,6 +413,30 @@
             tableBody.append(rows);
         });
 
+
+        function fetchItemUnit(checkedRow) {
+
+            let row = checkedRow.closest("tr");
+            let unitInput = row.find(".unit-input");
+            let packingUnitInput = row.find(".packing-unit-input");
+            let masterUnitInput = row.find(".master-unit-input");
+            let ItemNumber = row.find("td:eq(1)").text().trim();
+
+            $.ajax({
+                url: "/Items?handler=FetchUnit",
+                type: "GET",
+                data: {itemNumber: ItemNumber},
+                success: function(response){
+                    let unitFound = response.trim();
+                    unitInput.val(unitFound);
+                    packingUnitInput.val(unitFound);
+                    masterUnitInput.val(unitFound);
+                },
+                error: function(){
+                    alert("Error fetching unit");
+                }
+            });
+        }
 
         $("#generateSObtn").on("click", function () {
             // console.log("SO button clicked");
@@ -470,11 +455,11 @@
                         site: $(this).find("select.site-dropdown").val(),
                         warehouse: $(this).find("select.warehouse-dropdown").val(),
                         location: $(this).find("select.location-dropdown").val(),
-                        unit: $(this).find("select.unit-dropdown").val(),
+                        unit: $(this).find(".unit-input").val(),
                         quantity: $(this).find(".quantity-input").val().trim(),
-                        packingUnit: $(this).find("select.packing-unit-dropdown").val(),
+                        packingUnit: $(this).find(".packing-unit-input").val(),
                         packingUnitQty: $(this).find(".packing-unit-qty-input").val().trim(),
-                        masterUnit: $(this).find("select.master-unit-dropdown").val(),
+                        masterUnit: $(this).find(".master-unit-input").val(),
                         masterUnitQty: $(this).find(".master-unit-qty-input").val().trim()
                     };
                     selectedItems.push(itemData);

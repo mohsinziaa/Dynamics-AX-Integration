@@ -26,7 +26,7 @@ namespace ax.Pages
             try
             {
                 var items = await _dbService.ExecuteQueryAsync<itemInfo>(
-                    "SELECT TOP 10 ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
+                    "SELECT ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
                     reader => new itemInfo
                     {
                         itemNumber = reader["ITEMID"].ToString() ?? string.Empty,
@@ -116,12 +116,12 @@ namespace ax.Pages
             return locationsList;
         }
 
-        public async Task<JsonResult> OnGetFetchUnits()
+        public async Task<JsonResult> OnGetFetchUnit(string itemNumber)
         {
             try
             {
-                var unitsList = await FetchUnitsAsync();
-                return new JsonResult(unitsList);
+                var itemUnit = await FetchUnitAsync(itemNumber);
+                return new JsonResult(itemUnit);
             }
             catch (Exception ex)
             {
@@ -130,15 +130,31 @@ namespace ax.Pages
             }
         }
 
-        private async Task<List<string>> FetchUnitsAsync()
+        private async Task<string> FetchUnitAsync(string itemNumber)
         {
-            const string sql = "SELECT DISTINCT UNITID FROM UNIT WHERE UNITID <> ' '";
+            const string sql = "SELECT UNITID FROM InventTableModule WHERE ITEMID = @itemNumber AND UNITID <> 'Ton'";
 
-            var unitsList = await _dbService.ExecuteQueryAsync<string>(
+            var parameters = new Dictionary<string, object>
+            {
+                { "@itemNumber", itemNumber }
+            };
+
+            var result = await _dbService.ExecuteQueryAsync<string>(
                 sql,
-                reader => reader["UNITID"].ToString());
+                reader => reader["UNITID"].ToString(),
+                parameters);
 
-            return unitsList;
+
+            // Default values if no record is found
+            string itemUnit = string.Empty;
+
+            // If a record is found, use the fetched data
+            if (result.Count > 0)
+            {
+                itemUnit = result[0];
+            }
+
+            return result.FirstOrDefault() ?? "";
         }
 
         public async Task<JsonResult> OnGetFetchMasterUnitsAndQty(string itemNumber)
