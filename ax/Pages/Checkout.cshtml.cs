@@ -199,14 +199,11 @@ namespace ax.Pages
                 //    item.Site, item.Warehouse, item.Location);
 
                 string fetchInventDimIdQuery = @"
-                SELECT INVENTDIMID FROM INVENTDIM 
+                SELECT TOP 1 INVENTDIMID FROM INVENTDIM 
                 WHERE DATAAREAID = 'MRP'
                 AND INVENTSITEID = @Site
                 AND INVENTLOCATIONID = @Warehouse
-                AND WMSLOCATIONID = @Location
-                AND INVENTBATCHID = ''
-                AND INVENTCOLORID = ''
-                AND INVENTSIZEID = ''";
+                AND WMSLOCATIONID = @Location";
 
                 var parameters = new Dictionary<string, object>
                 {

@@ -93,12 +93,10 @@
             <thead>
                 <tr>
                     <th scope="col">Item Number</th>
+                    <th scope="col">Item Name</th>
                     <th scope="col">Site</th>
-                    <th scope="col">Warehouse</th>
                     <th scope="col">Unit</th>
                     <th scope="col">Quantity</th>
-                    <th scope="col">PU</th>
-                    <th scope="col">PUQ</th>
                     <th scope="col">MU</th>
                     <th scope="col">MUQ</th>
                 </tr>
@@ -198,12 +196,10 @@
                     $("#itemsTableBody").append(`
                         <tr>
                             <td>${item.itemNumber}</td>
+                            <td>${item.itemName}</td>
                             <td>${item.site}</td>
-                            <td>${item.warehouse}</td>
                             <td>${item.unit}</td>
                             <td>${item.quantity}</td>
-                            <td>${item.packingUnit}</td>
-                            <td>${item.packingUnitQty}</td>
                             <td>${item.masterUnit}</td>
                             <td>${item.masterUnitQty}</td>
                         </tr>
@@ -213,8 +209,6 @@
 
                     $("#itemsTableBody").append(`
                         <tr>
-                            <td>-</td>
-                            <td>-</td>
                             <td>-</td>
                             <td>-</td>
                             <td>-</td>

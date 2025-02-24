@@ -76,23 +76,24 @@
 <script>
     $(document).ready(function () {
 
-        // Fetch sites and populate site dropdown
+        // Fetch available sites from the backend and populate the site dropdown
         $.ajax({
             url: "/Index?handler=FetchSites",
             type: "GET",
             success: function (response) {
-
                 console.log(response);
 
                 let siteDropdown = $("select#site");
                 siteDropdown.empty();
 
+                // Populate site dropdown with fetched site names
                 response.forEach(site => {
                     siteDropdown.append(`<option value="${site}">${site}</option>`);
                 });
 
+                // Set default selected site
                 siteDropdown.val("MATCO02").change();
-                },    
+            },
             error: function () {
                 alert("Error fetching sites");
             },
@@ -103,7 +104,7 @@
             updateWarehouses($(this).val());
         });
 
-        // Function to update warehouses based on selected site
+        // Fetch warehouses based on the selected site and update warehouse dropdown
         function updateWarehouses(siteName) {
             if (!siteName) return;
 
@@ -113,16 +114,15 @@
                 data: { siteName: siteName },
                 success: function (response) {
                     let warehouseDropdown = $("select#warehouse");
-
                     warehouseDropdown.empty();
 
+                    // Populate warehouse dropdown with fetched warehouses
                     response.forEach(function (warehouse) {
                         warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
                     });
 
-                    // Select the last option by default (if available)
-                    warehouseDropdown.find("option:last").prop("selected", true);
-
+                    // Select the first available warehouse by default
+                    warehouseDropdown.find("option:first").prop("selected", true);
                 },
                 error: function () {
                     alert("Error fetching warehouses");
@@ -130,15 +130,15 @@
             });
         }
 
-
-        // Set default date to today's date
+        // Set default POD date to today's date
         $("#podDate").val(new Date().toISOString().split('T')[0]);
 
-        // Fetch customer data on blur instead of keydown
+        // Fetch customer data when the Name input loses focus
         $("#Name").on("blur", function () {
             fetchCustomerData();
         });
 
+        // Fetch customer details based on entered customer name
         function fetchCustomerData() {
             let customerName = $("#Name").val().trim();
             if (!customerName) return;
@@ -148,7 +148,7 @@
                 type: "GET",
                 data: { customerName: customerName },
                 success: function(response) {
-                    // On success, handle the response
+                    // If customer data is found, populate fields
                     if (response && !response.error) {
                         $("#customerAccount").val(response.customerAccount);
                         $("#deliveryAddress").val(response.deliveryAddress);
@@ -158,14 +158,12 @@
                     }
                 },
                 error: function() {
-                    // On failure, handle the error
                     alert("Error Fetching Customer Account!");
                 }
             });
         }
 
-
-        // Function to enable/disable the "Create Items" button based on required fields
+        // Enable the "Create Items" button only when customer details are filled
         function enableCreateButton() {
             let customerName = $("#Name").val().trim();
             let customerAccount = $("#customerAccount").val().trim();
@@ -182,7 +180,7 @@
             enableCreateButton();
         });
 
-        // Collect form data on button click
+        // Collect customer form data and navigate to the Items page
         $("#createItemsBtn").on("click", function (event) {
             event.preventDefault();
 
@@ -201,12 +199,12 @@
                 reference: $("#reference").val()
             };
 
-            // Store the data in sessionStorage
+            // Store customer data in sessionStorage for the next page
             sessionStorage.setItem("customerData", JSON.stringify(customerData));
 
             console.log(customerData);
 
-            // Simulate a delay to show the loading spinner
+            // Simulate a delay to show the loading spinner before navigating
             setTimeout(function() {
                 window.location.href = "/Items";
             }, 1000);

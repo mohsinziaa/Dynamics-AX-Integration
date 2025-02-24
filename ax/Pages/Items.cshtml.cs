@@ -1,43 +1,52 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 using ax.Services;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Hosting;
 
 namespace ax.Pages
 {
     public class ItemsModel : PageModel
     {
+        private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ILogger<ItemsModel> _logger;
         private readonly DatabaseService _dbService;
 
         public List<itemInfo> ItemsList { get; private set; } = new List<itemInfo>();
         public List<string> SiteList { get; private set; } = new List<string>();
 
-        public ItemsModel(ILogger<ItemsModel> logger, DatabaseService dbService)
+        public ItemsModel(ILogger<ItemsModel> logger, IWebHostEnvironment webHostEnvironment, DatabaseService dbService)
         {
+            _webHostEnvironment = webHostEnvironment;
             _logger = logger;
             _dbService = dbService;
         }
 
-        public async Task OnGetAsync()
+        public void OnGet()
         {
-            try
-            {
-                var items = await _dbService.ExecuteQueryAsync<itemInfo>(
-                    "SELECT ITEMID, ITEMNAME FROM INVENTTABLE WHERE DATAAREAID = 'mrp' AND DIMENSION2_ = '0600005'",
-                    reader => new itemInfo
-                    {
-                        itemNumber = reader["ITEMID"].ToString() ?? string.Empty,
-                        itemName = reader["ITEMNAME"].ToString() ?? string.Empty
-                    });
+            string filePath = Path.Combine(_webHostEnvironment.WebRootPath, "items-list.txt");
 
-                ItemsList.AddRange(items);
-            }
-            catch (Exception ex)
+            if (System.IO.File.Exists(filePath))
             {
-                _logger.LogError($"Database query failed: {ex.Message}");
+                string[] lines = System.IO.File.ReadAllLines(filePath); 
+
+                foreach (string line in lines)
+                {
+                    string[] columns = line.Split('\t'); 
+
+                    var item = new itemInfo
+                    {
+                        itemNumber = columns[0].Trim(), 
+                        itemName = columns[1].Trim()    
+                    };
+                    ItemsList.Add(item);
+                }
+            }
+            else
+            {
+                _logger.LogError("File not found: " + filePath);
             }
         }
 
@@ -73,7 +82,7 @@ namespace ax.Pages
 
             var warehousesList = await _dbService.ExecuteQueryAsync<string>(
                 sql,
-                reader => reader["INVENTLOCATIONID"].ToString(),
+                reader => reader["INVENTLOCATIONID"].ToString() ?? "",
                 parameters);
 
             return warehousesList;
@@ -110,7 +119,7 @@ namespace ax.Pages
 
             var locationsList = await _dbService.ExecuteQueryAsync<string>(
                 sql,
-                reader => reader["WMSLOCATIONID"].ToString(),
+                reader => reader["WMSLOCATIONID"].ToString() ?? "",
                 parameters);
 
             return locationsList;
@@ -132,7 +141,7 @@ namespace ax.Pages
 
         private async Task<string> FetchUnitAsync(string itemNumber)
         {
-            const string sql = "SELECT UNITID FROM InventTableModule WHERE ITEMID = @itemNumber AND UNITID <> 'Ton'";
+            const string sql = "SELECT UNITID FROM InventTableModule WHERE ITEMID = @itemNumber AND MODULETYPE = 2";
 
             var parameters = new Dictionary<string, object>
             {
@@ -141,7 +150,7 @@ namespace ax.Pages
 
             var result = await _dbService.ExecuteQueryAsync<string>(
                 sql,
-                reader => reader["UNITID"].ToString(),
+                reader => reader["UNITID"].ToString() ?? "",
                 parameters);
 
 

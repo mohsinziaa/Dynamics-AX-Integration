@@ -92,14 +92,14 @@
                 <th scope="col">Item Number</th>
                 <th scope="col">Item Name</th>
                 <th scope="col">Site</th>
-                <th scope="col">Warehouse</th>
-                <th scope="col">Location</th>
                 <th scope="col">Unit</th>
                 <th scope="col">Quantity</th>
                 <th scope="col">Packing Unit</th>
                 <th scope="col">Packing Qty</th>
                 <th scope="col">Master Unit</th>
                 <th scope="col">Master Qty</th>
+                <th scope="col">Warehouse</th>
+                <th scope="col">Location</th>
             </tr>
         </thead>
         <tbody>
@@ -113,15 +113,6 @@
                     <td>@item.itemName</td>
                     <td>
                         <select class="form-select site-dropdown">
-                        </select>
-                    </td>
-                    <td>
-                        <select class="form-select warehouse-dropdown">
-                        </select>
-                    </td>
-                    <td>
-                        <select class="form-select location-dropdown">
-                            <option value="0001">0001</option>
                         </select>
                     </td>
 
@@ -148,7 +139,14 @@
                     <td>
                         <input type="text" class="form-control master-unit-qty-input" min="1">
                     </td>
-
+                    <td>
+                        <select class="form-select warehouse-dropdown">
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select location-dropdown">
+                        </select>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -168,6 +166,10 @@
 <script>
 
     $(document).ready(function () {
+
+        if(sessionStorage.getItem("customerData") === null){
+            $("#itemList").hide();
+        }
 
         // Fetch customer data from sessionStorage
         const customerData = JSON.parse(sessionStorage.getItem("customerData"));
