@@ -193,19 +193,19 @@ namespace ax.Pages
         private async Task<(string MasterUnit, string MasterQty)> FetchMasterUnitsAndQtyAsync(string itemNumber)
         {
             const string sql = @"
-        SELECT MASTERBAGUNIT, MASTERBAGQTYFACTOR 
-        FROM MASTERBAGSDETAIL 
-        WHERE ITEMID = @itemNumber";
+            SELECT MASTERBAGUNIT, MASTERBAGQTYFACTOR 
+            FROM MASTERBAGSDETAIL 
+            WHERE ITEMID = @itemNumber";
 
             var parameters = new Dictionary<string, object>
-    {
-        { "@itemNumber", itemNumber }
-    };
+            {
+                { "@itemNumber", itemNumber }
+            };
 
             // Fetch the result from MASTERBAGSDETAIL table
             var result = await _dbService.ExecuteQueryAsync<(string MasterUnit, string MasterQty)>(
                 sql,
-                reader => (reader["MASTERBAGUNIT"].ToString(), reader["MASTERBAGQTYFACTOR"].ToString()),
+                reader => (reader["MASTERBAGUNIT"].ToString() ?? "", reader["MASTERBAGQTYFACTOR"].ToString() ?? ""),
                 parameters);
 
             // Default values if no record is found
@@ -219,9 +219,9 @@ namespace ax.Pages
                 masterQty = result[0].MasterQty;
             }
 
-            // Return the fetched master unit and qty (or default empty values)
-            return (masterUnit, masterQty);
-        }
+                // Return the fetched master unit and qty (or default empty values)
+                return (masterUnit, masterQty);
+            }
 
     }
 
