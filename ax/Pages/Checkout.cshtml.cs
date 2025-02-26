@@ -16,7 +16,7 @@ namespace ax.Pages
         private readonly ILogger<CheckoutModel> _logger;
         private readonly DatabaseService _dbService;
 
-        // A simple in-memory storage for orders
+        // Simulated in-memory order storage
         private static List<OrderData> OrderDatabase = new List<OrderData>();
 
         public CheckoutModel(ILogger<CheckoutModel> logger, DatabaseService dbService)
@@ -27,8 +27,10 @@ namespace ax.Pages
 
         public void OnGet()
         {
-
+            _logger.LogInformation("Checkout page loaded.");
         }
+
+        /// Retrieves the next available RECID for a given table.
         private async Task<long> GetNextRecIdAsync(string tableName)
         {
             try
@@ -63,12 +65,11 @@ namespace ax.Pages
             }
         }
 
+        /// Fetches the next Sales Order ID.
         private async Task<int> FetchSalesIdAsync()
         {
             try
             {
-                // Log the start of the method execution
-                //_logger.LogInformation("Executing query to fetch the next SalesID.");
 
                 string fetchSalesIdQuery = @"
                 SELECT NEXTREC 
@@ -77,22 +78,19 @@ namespace ax.Pages
 
                 var parameters = new Dictionary<string, object>();
 
-                // Execute the query and fetch the first column as an integer
                 var result = await _dbService.ExecuteQueryAsync<int>(
                     fetchSalesIdQuery,
-                    reader => reader.GetInt32(0), // Extract the first column as INT
+                    reader => reader.GetInt32(0), 
                     parameters
                 );
 
-                // Ensure that the SalesID is valid, otherwise, default to a fallback value
-                int salesId = result.Count > 0 ? result[0] : -1; // Returning -1 if NULL is fetched
+                int salesId = result.Count > 0 ? result[0] : -1;
                 if (salesId == -1)
                 {
                     _logger.LogError("Failed to fetch a valid SalesID from NUMBERSEQUENCETABLE.");
                     throw new InvalidOperationException("Failed to fetch a valid SalesID.");
                 }
 
-                //_logger.LogInformation("Fetched SalesID: {SalesID}", salesId);
                 return salesId;
             }
             catch (Exception ex)
@@ -102,20 +100,17 @@ namespace ax.Pages
             }
         }
 
+        /// Increments the Sales Order ID.
         private async Task IncrementSalesIdAsync()
         {
             try
             {
-                // Log the start of the increment operation
-                //_logger.LogInformation("Executing query to increment the SalesID in NUMBERSEQUENCETABLE.");
-
                 string updateSalesIdQuery = @"
-            UPDATE NUMBERSEQUENCETABLE
-            SET NEXTREC = CAST(CAST(NEXTREC AS INT) + 1 AS VARCHAR)
-            WHERE DATAAREAID = 'mrp' AND NUMBERSEQUENCE = 'SO_2018'";
+                UPDATE NUMBERSEQUENCETABLE
+                SET NEXTREC = CAST(CAST(NEXTREC AS INT) + 1 AS VARCHAR)
+                WHERE DATAAREAID = 'mrp' AND NUMBERSEQUENCE = 'SO_2018'";
 
                 await _dbService.ExecuteNonQueryAsync(updateSalesIdQuery);
-                //_logger.LogInformation("SalesID successfully incremented in NUMBERSEQUENCETABLE.");
             }
             catch (Exception ex)
             {
@@ -124,13 +119,11 @@ namespace ax.Pages
             }
         }
 
-
+        /// Fetches the next available INVENTTRANSID.
         private async Task<string> FetchInventTransIdAsync()
         {
             try
             {
-                // Log the start of the method execution
-                //_logger.LogInformation("Executing query to fetch the next INVENTTRANSID.");
 
                 string fetchInventTransIdQuery = @"
                 SELECT NEXTREC, FORMAT
@@ -139,7 +132,6 @@ namespace ax.Pages
 
                 var parameters = new Dictionary<string, object>();
 
-                // Execute the query and fetch the NEXTREC and FORMAT
                 var result = await _dbService.ExecuteQueryAsync<dynamic>(
                     fetchInventTransIdQuery,
                     reader => new { NEXTREC = reader.GetInt32(0), FORMAT = reader.GetString(1) },
@@ -150,10 +142,10 @@ namespace ax.Pages
                 {
                     var nextRec = result[0].NEXTREC;
                     var format = result[0].FORMAT;
+
                     // Format the NEXTREC based on the FORMAT
                     string inventTransId = nextRec.ToString("D8") + "_078";
 
-                    //_logger.LogInformation("Fetched INVENTTRANSID: {InventTransID}", inventTransId);
                     return inventTransId;
                 }
                 else
@@ -169,12 +161,11 @@ namespace ax.Pages
             }
         }
 
+        /// Increments the INVENTTRANSID in the database.
         private async Task IncrementInventTransIdAsync()
         {
             try
             {
-                // Log the start of the increment operation
-                //_logger.LogInformation("Executing query to increment the INVENTTRANSID in NUMBERSEQUENCETABLE.");
 
                 string updateInventTransIdQuery = @"
                 UPDATE NUMBERSEQUENCETABLE
@@ -182,7 +173,6 @@ namespace ax.Pages
                 WHERE DATAAREAID = 'mrp' AND NUMBERSEQUENCE = 'Inve_78'";
 
                 await _dbService.ExecuteNonQueryAsync(updateInventTransIdQuery);
-                //_logger.LogInformation("INVENTTRANSID successfully incremented in NUMBERSEQUENCETABLE.");
             }
             catch (Exception ex)
             {
@@ -191,13 +181,11 @@ namespace ax.Pages
             }
         }
 
+        /// Fetches the INVENTDIMID for a given item.
         private async Task<string> FetchInventDimIdAsync(ItemData item)
         {
             try
             {
-                //_logger.LogInformation("Fetching INVENTDIMID for Site: {Site}, Warehouse: {Warehouse}, Location: {Location}",
-                //    item.Site, item.Warehouse, item.Location);
-
                 string fetchInventDimIdQuery = @"
                 SELECT TOP 1 INVENTDIMID FROM INVENTDIM 
                 WHERE DATAAREAID = 'MRP'
@@ -221,7 +209,6 @@ namespace ax.Pages
                 if (result.Count > 0)
                 {
                     string inventDimId = result[0];
-                    //_logger.LogInformation("Fetched INVENTDIMID: {InventDimId}", inventDimId);
                     return inventDimId;
                 }
                 else
@@ -238,6 +225,7 @@ namespace ax.Pages
             }
         }
 
+        /// Fetches the CUSTGROUP for a given customer.
         private async Task<string> FetchCustGroupAsync(string customerAccount)
         {
             try
@@ -252,21 +240,20 @@ namespace ax.Pages
                     { "@AccountNum", customerAccount }
                 };
 
-                // Execute the query to fetch the CUSTGROUP
                 var result = await _dbService.ExecuteQueryAsync<string>(
                     fetchCustGroupQuery,
-                    reader => reader.GetString(0), // Extract the first column as string
+                    reader => reader.GetString(0), 
                     parameters
                 );
 
                 if (result.Count > 0)
                 {
-                    return result[0]; // Return the first (and expected) CUSTGROUP
+                    return result[0]; 
                 }
                 else
                 {
                     _logger.LogWarning($"No CUSTGROUP found for Account: {customerAccount}");
-                    return string.Empty; // Return empty if no result
+                    return string.Empty; 
                 }
             }
             catch (Exception ex)
@@ -276,25 +263,30 @@ namespace ax.Pages
             }
         }
 
+        /// <summary>
+        /// Handles the HTTP POST request to create a Sales Order.
+        /// Validates the received order data and processes it by inserting customer and item details into the database.
+        /// </summary>
+        /// <param name="orderData">Order data containing customer and item details.</param>
+        /// <returns>A JSON response indicating success or failure with the generated Sales Order IDs.</returns>
         public async Task<IActionResult> OnPostCreateSalesOrder([FromBody] OrderData orderData)
         {
 
+            // Validate the incoming order data
             if (orderData == null)
             {
                 _logger.LogWarning("Received invalid order data.");
                 return new JsonResult(new { error = "Invalid order data" }) { StatusCode = 400 };
             }
 
-            // Store the order data in the in-memory database
             OrderDatabase.Add(orderData);
 
-            // Simulate processing (printing the stored data)
             _logger.LogInformation("Processing order...");
 
-            // Insert customer data into SALESTABLE
+            // Process the order and insert customer data, returning the generated Sales Order IDs
             List<string> salesOrders = await InsertCustomerDataAsync(orderData.Customer, orderData.Items);
 
-            // Return JSON response including salesOrders
+            // Return the created Sales Order IDs as a response
             return new JsonResult(new
             {
                 message = "Order data received successfully.",
@@ -302,9 +294,16 @@ namespace ax.Pages
             });
         }
 
+        /// <summary>
+        /// Inserts customer and item details into the database to create a Sales Order.
+        /// Generates a unique Sales Order ID and associates it with item details in the SALESTABLE and SALESLINE tables.
+        /// </summary>
+        /// <param name="customer">Customer details including name, account, and address.</param>
+        /// <param name="items">List of items to be added to the Sales Order.</param>
+        /// <returns>A list of generated Sales Order IDs.</returns>
         private async Task<List<string>> InsertCustomerDataAsync(CustomerData customer, List<ItemData> items)
         {
-            List<string> salesOrders = new List<string>(); // Store created Sales IDs
+            List<string> salesOrders = new List<string>(); 
             try
             {
                 foreach (var item in items)
@@ -315,16 +314,18 @@ namespace ax.Pages
                     Console.WriteLine($"Customer: {customer.Name}");
                     Console.WriteLine($"Customer Account: {customer.CustomerAccount}");
 
-                    // Fetch the next SalesID
+                    // Fetch and increment Sales Order ID
                     int salesId = await FetchSalesIdAsync();
                     await IncrementSalesIdAsync();
+
+                    // Get next available RECID for SALESTABLE
                     long salesTableRecId = await GetNextRecIdAsync("SALESTABLE");
 
 
                     Console.WriteLine($"Sales ID Generated: SO-{salesId}");
                     Console.WriteLine($"REC ID Generated for SALESTABLE: {salesTableRecId}");
 
-                    // Insert customer data into SALESTABLE
+                    // Insert into SALESTABLE (Sales Order Header)
                     string insertQuery = @"
                     INSERT INTO [MATCOAX].[dbo].[SALESTABLE]
                         (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,    
@@ -370,7 +371,7 @@ namespace ax.Pages
                         { "@CreatedBy", "mziaa" },
                     };
 
-                    await Task.Delay(1000); 
+                    await Task.Delay(2000); 
                     int salesTableResult = await _dbService.ExecuteNonQueryAsync(insertQuery, parametersForInsert);
 
                     if (salesTableResult > 0)
@@ -379,7 +380,6 @@ namespace ax.Pages
                         Console.WriteLine($"\nCustomer data inserted successfully for SalesID: SO-{salesId}\n");
                         Console.WriteLine("---------------------------------------------");
 
-                        // Insert Sales Line for the item
                         try
                         {
                             Console.WriteLine("Inserting Sales Lines:");
@@ -387,28 +387,30 @@ namespace ax.Pages
 
                             Console.WriteLine($"Item: {item.ItemNumber} ({item.ItemName})");
 
+                            // Get next RECID for SALESLINE
                             long salesLineRecId = await GetNextRecIdAsync("SALESLINE");
 
                             Console.WriteLine($"REC ID Generated for SALESLINE: {salesLineRecId}");
 
 
-                            // Fetch the CUSTGROUP based on the customer's account
+                            // Fetch customer group based on account number
                             string custGroup = await FetchCustGroupAsync(customer.CustomerAccount);
                             Console.WriteLine($"Customer Group: {custGroup}");
 
 
-                            // Fetch the next INVENTTRANSID
+                            // Generate unique inventory transaction ID and increment it
                             string inventTransId = await FetchInventTransIdAsync();
                             await IncrementInventTransIdAsync();
 
-                            // Fetch the INVENTDIMID for the item
+                            // Fetch inventory dimension ID based on warehouse details
                             string inventDimId = await FetchInventDimIdAsync(item);
 
                             Console.WriteLine($"      TransID: {inventTransId}");
                             Console.WriteLine($"      InventDimID: {inventDimId}");
 
+                            // Insert into SALESLINE (Sales Order Line Items)
                             string insertSalesLineQuery = @"
-                        INSERT INTO [MATCOAX].[dbo].[SALESLINE]
+                            INSERT INTO [MATCOAX].[dbo].[SALESLINE]
                             (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, 
                             PACKINGUNIT, PACKINGUNITQTY, MASTERUNIT, MASTERUNITQTY, CURRENCYCODE, 
                             RECID, DATAAREAID, SALESTYPE, INVENTTRANSID, INVENTDIMID, 
@@ -454,7 +456,7 @@ namespace ax.Pages
                             { "@CustGroup", custGroup },
                         };
 
-                            await Task.Delay(1000);
+                            await Task.Delay(2000);
                             int salesLineResult = await _dbService.ExecuteNonQueryAsync(insertSalesLineQuery, salesLineParams);
 
                             if (salesLineResult > 0)
@@ -472,7 +474,7 @@ namespace ax.Pages
                                     Console.WriteLine($"InventDimID: {inventDimId}");
                                     Console.WriteLine($"RecID: {salesLineRecId}");
 
-                                    // Insert Invent Trans record
+                                    // Insert into INVENTTRANS (inventory transaction details)
                                     string insertInventTransQuery = @"
                                     INSERT INTO [MATCOAX].[dbo].[INVENTTRANS]
                                     (ITEMID, TRANSREFID, CUSTVENDAC, INVENTTRANSID, 
@@ -543,12 +545,15 @@ namespace ax.Pages
 
     }
 
+    /// Represents an order containing customer information and a list of items.
     public class OrderData
     {
-        public CustomerData Customer { get; set; }
+        public CustomerData Customer { get; set; } = new CustomerData();
         public List<ItemData> Items { get; set; } = new List<ItemData>();
     }
 
+
+    /// Contains details about the customer placing the order.
     public class CustomerData
     {
         public string CustomerAccount { get; set; } = string.Empty;
@@ -561,6 +566,8 @@ namespace ax.Pages
         public string Site { get; set; } = string.Empty;
         public string Warehouse { get; set; } = string.Empty;
     }
+
+    /// Represents an item in the order with its details.
     public class ItemData
     {
         public string ItemName { get; set; } = string.Empty;

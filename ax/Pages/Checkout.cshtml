@@ -129,7 +129,7 @@
 
 <script>
 
-
+    // Function to create toaster notifications in which SO number is displayed
     function showToasts(salesOrders) {
         const toastContainer = document.querySelector(".toast-container");
 
@@ -165,6 +165,7 @@
     }
 
     $(document).ready(function () {
+
         // Retrieve stored data from sessionStorage
         let storedItems = sessionStorage.getItem("itemsSelected");
         let storedCustomerData = sessionStorage.getItem("customerData");
@@ -231,6 +232,7 @@
         }
 
 
+        // Event handler for clicking the "Generate Orders" button
         $("#generateOrders").on("click", function (event) {
 
             event.preventDefault();
@@ -248,9 +250,6 @@
                 items: itemsArray
             };
 
-            console.log(orderData)
-
-            // Send the data to the controller via AJAX
             $.ajax({
                 type: "POST",
                 url: "/Checkout?handler=CreateSalesOrder",
@@ -268,12 +267,12 @@
                         $("#generateOrders").prop("disabled", false);
                         $("#generateOrders").find(".spinner-border").hide();
 
-                        // Fade out the success alert after 1 second
+                        // Fade out the success alert after 2 second
                         setTimeout(function() {
                             $("#successAlert").fadeOut();
-                        }, 1500);
+                        }, 2000);
 
-                    }, 1500);
+                    }, 2000);
 
                 },
                 error: function (error) {

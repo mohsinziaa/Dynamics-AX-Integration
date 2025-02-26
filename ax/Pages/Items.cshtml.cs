@@ -14,6 +14,7 @@ namespace ax.Pages
         private readonly ILogger<ItemsModel> _logger;
         private readonly DatabaseService _dbService;
 
+        // List of site and items.
         public List<itemInfo> ItemsList { get; private set; } = new List<itemInfo>();
         public List<string> SiteList { get; private set; } = new List<string>();
 
@@ -24,6 +25,7 @@ namespace ax.Pages
             _dbService = dbService;
         }
 
+        /// Load item list from a text file when the page is accessed
         public void OnGet()
         {
             string filePath = Path.Combine(_webHostEnvironment.WebRootPath, "items-list.txt");
@@ -50,14 +52,14 @@ namespace ax.Pages
             }
         }
 
-        // AJAX Handler for Fetching Sites
+        /// Fetch the S&D sites.
         public JsonResult OnGetFetchSites()
         {
-            // Example: Set SiteList after fetching items from database (if needed)
             SiteList = new List<string> { "MATCO02", "MATCO03", "MATCO13", "RIVIANA", "GODOWNS" };
             return new JsonResult(SiteList);
         }
 
+        /// Fetch warehouses based on selected site
         public async Task<JsonResult> OnGetFetchWarehouses(string siteName)
         {
             try
@@ -72,6 +74,7 @@ namespace ax.Pages
             }
         }
 
+        // Query the database to get warehouses for a given site
         private async Task<List<string>> FetchWarehousesAsync(string siteName)
         {
             const string sql = "SELECT DISTINCT INVENTLOCATIONID FROM InventDim WHERE INVENTSITEID = @SiteName AND INVENTLOCATIONID <> ' '";
@@ -88,6 +91,7 @@ namespace ax.Pages
             return warehousesList;
         }
 
+        // Fetch locations based on site and warehouse
         public async Task<JsonResult> OnGetFetchLocations(string siteName, string warehouseName)
         {
             try
@@ -102,6 +106,7 @@ namespace ax.Pages
             }
         }
 
+        // Query the database to get locations for a given site and warehouse
         private async Task<List<string>> FetchLocationsAsync(string siteName, string warehouseName)
         {
             const string sql = @"
@@ -125,6 +130,7 @@ namespace ax.Pages
             return locationsList;
         }
 
+        // Fetch unit of measure for a given item
         public async Task<JsonResult> OnGetFetchUnit(string itemNumber)
         {
             try
@@ -139,6 +145,7 @@ namespace ax.Pages
             }
         }
 
+        // Query the database to get the unit of measure for an item
         private async Task<string> FetchUnitAsync(string itemNumber)
         {
             const string sql = "SELECT UNITID FROM InventTableModule WHERE ITEMID = @itemNumber AND MODULETYPE = 2";
@@ -157,7 +164,6 @@ namespace ax.Pages
             // Default values if no record is found
             string itemUnit = string.Empty;
 
-            // If a record is found, use the fetched data
             if (result.Count > 0)
             {
                 itemUnit = result[0];
@@ -166,16 +172,14 @@ namespace ax.Pages
             return result.FirstOrDefault() ?? "";
         }
 
+        // Fetch master unit and quantity for an item
         public async Task<JsonResult> OnGetFetchMasterUnitsAndQty(string itemNumber)
         {
             try
             {
-                //_logger.LogInformation($"Fetching master units and quantity for ItemNumber: {itemNumber}");
-
-                // Fetch data from MASTERBAGSDETAIL and return the result
                 var result = await FetchMasterUnitsAndQtyAsync(itemNumber);
 
-                //_logger.LogInformation($"Fetched Data - MasterUnit: {result.MasterUnit}, MasterQty: {result.MasterQty}");
+                Console.WriteLine($"Item: {itemNumber} => Fetched Data - MasterUnit: {result.MasterUnit}, MasterQty: {result.MasterQty}");
 
                 return new JsonResult(new
                 {
@@ -190,6 +194,7 @@ namespace ax.Pages
             }
         }
 
+        // Query the database to fetch master unit and quantity for an item
         private async Task<(string MasterUnit, string MasterQty)> FetchMasterUnitsAndQtyAsync(string itemNumber)
         {
             const string sql = @"
@@ -202,7 +207,6 @@ namespace ax.Pages
                 { "@itemNumber", itemNumber }
             };
 
-            // Fetch the result from MASTERBAGSDETAIL table
             var result = await _dbService.ExecuteQueryAsync<(string MasterUnit, string MasterQty)>(
                 sql,
                 reader => (reader["MASTERBAGUNIT"].ToString() ?? "", reader["MASTERBAGQTYFACTOR"].ToString() ?? ""),
@@ -212,19 +216,18 @@ namespace ax.Pages
             string masterUnit = string.Empty;
             string masterQty = string.Empty;
 
-            // If a record is found, use the fetched data
             if (result.Count > 0)
             {
                 masterUnit = result[0].MasterUnit;
                 masterQty = result[0].MasterQty;
             }
 
-                // Return the fetched master unit and qty (or default empty values)
                 return (masterUnit, masterQty);
             }
 
     }
 
+    // Model to store item details
     public class itemInfo
     {
         public string itemNumber { get; set; } = string.Empty;
