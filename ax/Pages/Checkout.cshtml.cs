@@ -321,6 +321,9 @@ namespace ax.Pages
                     // Get next available RECID for SALESTABLE
                     long salesTableRecId = await GetNextRecIdAsync("SALESTABLE");
 
+                    // Fetch customer group based on account number
+                    string custGroup = await FetchCustGroupAsync(customer.CustomerAccount);
+                    Console.WriteLine($"Customer Group: {custGroup}");
 
                     Console.WriteLine($"Sales ID Generated: SO-{salesId}");
                     Console.WriteLine($"REC ID Generated for SALESTABLE: {salesTableRecId}");
@@ -333,7 +336,7 @@ namespace ax.Pages
                         CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
                         PURCHORDERFORMNUM, CUSTOMERREF, RECID, 
                         LANGUAGEID, SALESRESPONSIBLE, DATAAREAID, 
-                        DIMENSION, DIMENSION2_, DIMENSION3_, CREATEDBY, 
+                        DIMENSION, DIMENSION2_, DIMENSION3_, CREATEDBY, CUSTGROUP,
                         CREATEDDATETIME)
 
                     VALUES
@@ -342,7 +345,7 @@ namespace ax.Pages
                         @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
                         @PurchOrderFormNum, @CustomerRef, @RecID, 
                         @LanguageID, @SalesResponsible, @DataAreaID, 
-                        @Dimension1, @Dimension2, @Dimension3, @CreatedBy, 
+                        @Dimension1, @Dimension2, @Dimension3, @CreatedBy, @CustGroup,
                         GETDATE())";
 
                     var parametersForInsert = new Dictionary<string, object>
@@ -369,6 +372,7 @@ namespace ax.Pages
                         { "@Dimension2", "0600001" },
                         { "@Dimension3", "02" },
                         { "@CreatedBy", "mziaa" },
+                        { "@CustGroup", custGroup },
                     };
 
                     await Task.Delay(2000); 
@@ -391,12 +395,6 @@ namespace ax.Pages
                             long salesLineRecId = await GetNextRecIdAsync("SALESLINE");
 
                             Console.WriteLine($"REC ID Generated for SALESLINE: {salesLineRecId}");
-
-
-                            // Fetch customer group based on account number
-                            string custGroup = await FetchCustGroupAsync(customer.CustomerAccount);
-                            Console.WriteLine($"Customer Group: {custGroup}");
-
 
                             // Generate unique inventory transaction ID and increment it
                             string inventTransId = await FetchInventTransIdAsync();
