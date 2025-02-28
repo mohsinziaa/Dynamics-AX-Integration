@@ -414,7 +414,7 @@ namespace ax.Pages
                             RECID, DATAAREAID, SALESTYPE, INVENTTRANSID, INVENTDIMID, 
                             DIMENSION, DIMENSION2_, DIMENSION3_, LINENUM, QTYORDERED, 
                             CUSTACCOUNT, DELIVERYADDRESS, PRICEUNIT, CUSTGROUP,
-                            RECEIPTDATEREQUESTED, CREATEDDATETIME)
+                            RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED, CREATEDDATETIME)
                         
                         VALUES
                             (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, 
@@ -422,7 +422,7 @@ namespace ax.Pages
                             @RecID, @DataAreaID, @SalesType, @InventTransID, @InventDimID, 
                             @Dimension1, @Dimension2, @Dimension3, @LineNum, @QtyOredered, 
                             @CustAccount, @DeliveryAddress, @PriceUnit, @CustGroup, 
-                            GETDATE(), GETDATE())";
+                            GETDATE(), GETDATE(), GETDATE())";
 
                             var masterUnitQty = string.IsNullOrEmpty(item.MasterUnitQty) ? 0 : Convert.ToDecimal(item.MasterUnitQty);
 
