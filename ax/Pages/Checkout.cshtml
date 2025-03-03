@@ -263,14 +263,13 @@
                         showToasts(response.salesOrders);
                     }
 
+                    // Remove stored session data after processing
+                    sessionStorage.removeItem("itemsSelected");
+                    sessionStorage.removeItem("customerData");
+
                     setTimeout(function() {
                         $("#generateOrders").prop("disabled", false);
                         $("#generateOrders").find(".spinner-border").hide();
-
-                        // Fade out the success alert after 2 second
-                        setTimeout(function() {
-                            $("#successAlert").fadeOut();
-                        }, 2000);
 
                     }, 2000);
 
