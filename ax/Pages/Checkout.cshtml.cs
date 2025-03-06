@@ -335,7 +335,7 @@ namespace ax.Pages
                         SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,    
                         CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
                         PURCHORDERFORMNUM, CUSTOMERREF, RECID, 
-                        LANGUAGEID, SALESRESPONSIBLE, DATAAREAID, 
+                        LANGUAGEID, SALESRESPONSIBLE, SALESTAKER, DATAAREAID, 
                         DIMENSION, DIMENSION2_, DIMENSION3_, CREATEDBY, CUSTGROUP,
                         CREATEDDATETIME)
 
@@ -344,7 +344,7 @@ namespace ax.Pages
                         @SalesType, @ReceiptDateRequested, @ShippingDateRequested,
                         @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
                         @PurchOrderFormNum, @CustomerRef, @RecID, 
-                        @LanguageID, @SalesResponsible, @DataAreaID, 
+                        @LanguageID, @SalesResponsible, @SalesTaker, @DataAreaID, 
                         @Dimension1, @Dimension2, @Dimension3, @CreatedBy, @CustGroup,
                         GETDATE())";
 
@@ -367,6 +367,7 @@ namespace ax.Pages
                         { "@RecID", salesTableRecId },
                         { "@LanguageID", "EN-US" },
                         { "@SalesResponsible", "01631" },
+                        { "@SalesTaker", "01631" },
                         { "@DataAreaID", "mrp" },
                         { "@Dimension1", "06" },
                         { "@Dimension2", "0600001" },
