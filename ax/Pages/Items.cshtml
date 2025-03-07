@@ -98,8 +98,6 @@
                 <th scope="col">Packing Qty</th>
                 <th scope="col">Master Unit</th>
                 <th scope="col">Master Qty</th>
-                <th scope="col">Warehouse</th>
-                <th scope="col">Location</th>
             </tr>
         </thead>
         <tbody>
@@ -140,15 +138,6 @@
                         <input type="text" class="form-control master-unit-qty-input" min="1">
                     </td>
 
-                    <td>
-                        <select class="form-select warehouse-dropdown">
-                        </select>
-                    </td>
-
-                    <td>
-                        <select class="form-select location-dropdown">
-                        </select>
-                    </td>
                 </tr>
             }
         </tbody>
@@ -201,83 +190,6 @@
                 alert("Error fetching sites");
             },
         });
-
-        // Event listener for site selection change
-        $("select.site-dropdown").on('change', function () {
-            updateWarehouses($(this).val(), $(this));
-        });
-
-        // Function to update warehouses based on selected site
-        function updateWarehouses(siteName, siteDropdown) {
-            if (!siteName) return;
-
-            $.ajax({
-                url: "/Items?handler=FetchWarehouses",
-                type: "GET",
-                data: { siteName: siteName },
-                success: function (response) {
-                    let row = siteDropdown.closest('tr');
-                    let warehouseDropdown = row.find("select.warehouse-dropdown");
-
-                    warehouseDropdown.empty();
-
-                    response.forEach(function (warehouse) {
-                        warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
-                    });
-
-                    const customerWarehouse = customerData?.warehouse;
-                    let isWarehouseValid = warehouseDropdown.find(`option[value="${customerWarehouse}"]`).length > 0;
-
-                    if (isWarehouseValid) {
-                        warehouseDropdown.val(customerWarehouse).change();
-                        updateLocations(customerWarehouse, row);
-                    } else {
-                        let firstOption = warehouseDropdown.find("option:first").val();
-                        if (firstOption) {
-                            warehouseDropdown.val(firstOption).change();
-                            updateLocations(firstOption, row);
-                        }
-                    }
-                },
-                error: function () {
-                    alert("Error fetching warehouses");
-                }
-            });
-        }
-
-        // Event listener for warehouse selection change
-        $("select.warehouse-dropdown").on('change', function () {
-            updateLocations($(this).val(), $(this));
-        });
-
-        // Function to update locations based on selected warehouse
-        function updateLocations(warehouseName, warehouseDropdown) {
-            if (!warehouseName) return;
-
-            let row = warehouseDropdown.closest('tr');
-            let siteName = row.find("select.site-dropdown").val();
-
-            $.ajax({
-                url: "/Items?handler=FetchLocations",
-                type: "GET",
-                data: { warehouseName: warehouseName, siteName: siteName },
-                success: function (response) {
-                    let locationDropdown = row.find("select.location-dropdown");
-
-                    locationDropdown.empty();
-                    response.forEach(function (location) {
-                        locationDropdown.append(`<option value="${location}">${location}</option>`);
-                    });
-
-                    if (response.length > 0) {
-                        locationDropdown.val(response[0]);
-                    }
-                },
-                error: function () {
-                    alert("Error fetching locations");
-                }
-            });
-        }
 
     $("#itemSearch").on("input", function () {
         let searchQuery = $(this).val().toLowerCase();
@@ -433,8 +345,6 @@
                         itemNumber: $(this).find("td:eq(1)").text().trim(),
                         itemName: $(this).find("td:eq(2)").text().trim(),
                         site: $(this).find("select.site-dropdown").val(),
-                        warehouse: $(this).find("select.warehouse-dropdown").val(),
-                        location: $(this).find("select.location-dropdown").val(),
                         unit: $(this).find(".unit-input").val(),
                         quantity: $(this).find(".quantity-input").val().trim(),
                         packingUnit: $(this).find(".packing-unit-input").val(),

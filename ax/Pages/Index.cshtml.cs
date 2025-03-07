@@ -72,40 +72,6 @@ namespace ax.Pages
             return new JsonResult(SiteList);
         }
 
-        /// Fetches warehouses based on the selected site.
-        public async Task<JsonResult> OnGetFetchWarehouses(string siteName)
-        {
-            try
-            {
-                var warehousesList = await FetchWarehousesAsync(siteName);
-                return new JsonResult(warehousesList);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error fetching warehouses: {ex.Message}");
-                return new JsonResult(new { error = "An error occurred while fetching warehouses." });
-            }
-        }
-
-        /// Queries the database to fetch warehouses for a given site.
-        private async Task<List<string>> FetchWarehousesAsync(string siteName)
-        {
-            // SQL query to fetch distinct warehouse locations for the given site
-            const string sql = "SELECT DISTINCT INVENTLOCATIONID FROM InventDim WHERE INVENTSITEID = @SiteName AND INVENTLOCATIONID IS NOT NULL AND INVENTLOCATIONID <> ''";
-
-            var parameters = new Dictionary<string, object>
-            {
-                { "@SiteName", siteName }
-            };
-
-            // Execute query and return list of warehouses
-            var warehousesList = await _dbService.ExecuteQueryAsync<string>(
-                sql,
-                reader => reader["INVENTLOCATIONID"].ToString() ?? "",
-                parameters);
-
-            return warehousesList;
-        }
     }
 
     /// Represents customer information, including account number and delivery address.

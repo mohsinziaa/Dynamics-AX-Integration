@@ -42,11 +42,6 @@
             <select class="form-select" id="site">
             </select>
         </div>
-        <div class="col">
-            <label for="warehouse" class="form-label">Warehouse</label>
-            <select class="form-select" id="warehouse" readonly>
-            </select>
-        </div>
     </div>
 
     <hr class="mt-5 mt-4" />
@@ -98,37 +93,6 @@
                 alert("Error fetching sites");
             },
         });
-
-        // Event listener for site selection change
-        $("select#site").on('change', function () {
-            updateWarehouses($(this).val());
-        });
-
-        // Fetch warehouses based on the selected site and update warehouse dropdown
-        function updateWarehouses(siteName) {
-            if (!siteName) return;
-
-            $.ajax({
-                url: "/Index?handler=FetchWarehouses",
-                type: "GET",
-                data: { siteName: siteName },
-                success: function (response) {
-                    let warehouseDropdown = $("select#warehouse");
-                    warehouseDropdown.empty();
-
-                    // Populate warehouse dropdown with fetched warehouses
-                    response.forEach(function (warehouse) {
-                        warehouseDropdown.append(`<option value="${warehouse}">${warehouse}</option>`);
-                    });
-
-                    // Select the first available warehouse by default
-                    warehouseDropdown.find("option:first").prop("selected", true);
-                },
-                error: function () {
-                    alert("Error fetching warehouses");
-                }
-            });
-        }
 
         // Set default POD date to today's date
         $("#podDate").val(new Date().toISOString().split('T')[0]);
@@ -194,7 +158,6 @@
                 deliveryAddress: $("#deliveryAddress").val(),
                 podDate: $("#podDate").val(),
                 site: $("#site").val(),
-                warehouse: $("#warehouse").val(),
                 customerRequisition: $("#customerRequisition").val(),
                 reference: $("#reference").val()
             };

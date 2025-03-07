@@ -189,15 +189,11 @@ namespace ax.Pages
                 string fetchInventDimIdQuery = @"
                 SELECT TOP 1 INVENTDIMID FROM INVENTDIM 
                 WHERE DATAAREAID = 'MRP'
-                AND INVENTSITEID = @Site
-                AND INVENTLOCATIONID = @Warehouse
-                AND WMSLOCATIONID = @Location";
+                AND INVENTSITEID = @Site";
 
                 var parameters = new Dictionary<string, object>
                 {
                     { "@Site", item.Site },
-                    { "@Warehouse", item.Warehouse },
-                    { "@Location", item.Location }
                 };
 
                 var result = await _dbService.ExecuteQueryAsync<string>(
@@ -213,8 +209,8 @@ namespace ax.Pages
                 }
                 else
                 {
-                    _logger.LogWarning("No INVENTDIMID found for Site: {Site}, Warehouse: {Warehouse}, Location: {Location}",
-                        item.Site, item.Warehouse, item.Location);
+                    _logger.LogWarning("No INVENTDIMID found for Site: {Site}",
+                        item.Site);
                     return string.Empty; 
                 }
             }
@@ -333,18 +329,18 @@ namespace ax.Pages
                     INSERT INTO [MATCOAX].[dbo].[SALESTABLE]
                         (SALESID, SALESNAME, CUSTACCOUNT, DELIVERYADDRESS, INVOICEACCOUNT,    
                         SALESTYPE, RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED,    
-                        CURRENCYCODE, DLVMODE, INVENTSITEID, INVENTLOCATIONID, 
+                        CURRENCYCODE, DLVMODE, INVENTSITEID, 
                         PURCHORDERFORMNUM, CUSTOMERREF, RECID, 
-                        LANGUAGEID, SALESRESPONSIBLE, SALESTAKER, DATAAREAID, 
+                        LANGUAGEID, SALESRESPONSIBLE, SALESTAKER, SALESSTATUS, DATAAREAID, 
                         DIMENSION, DIMENSION2_, DIMENSION3_, CREATEDBY, CUSTGROUP,
                         CREATEDDATETIME)
 
                     VALUES
                         (@SalesId, @SalesName, @CustAccount, @DeliverAddress, @InvoiceAccount, 
                         @SalesType, @ReceiptDateRequested, @ShippingDateRequested,
-                        @CurrencyCode, @DlvMode, @InventSiteID, @InventLocationID,
+                        @CurrencyCode, @DlvMode, @InventSiteID,
                         @PurchOrderFormNum, @CustomerRef, @RecID, 
-                        @LanguageID, @SalesResponsible, @SalesTaker, @DataAreaID, 
+                        @LanguageID, @SalesResponsible, @SalesTaker, @SalesStatus, @DataAreaID, 
                         @Dimension1, @Dimension2, @Dimension3, @CreatedBy, @CustGroup,
                         GETDATE())";
 
@@ -361,13 +357,13 @@ namespace ax.Pages
                         { "@CurrencyCode", "PKR" },
                         { "@DlvMode", "ROAD" },
                         { "@InventSiteID", customer.Site },
-                        { "@InventLocationID", customer.Warehouse },
                         { "@PurchOrderFormNum", customer.CustomerRequisition },
-                        { "@CustomerRef", customer.Reference },
+                        { "@CustomerRef", string.IsNullOrEmpty(customer.Reference) ? item.ItemName : customer.Reference },
                         { "@RecID", salesTableRecId },
                         { "@LanguageID", "EN-US" },
                         { "@SalesResponsible", "01631" },
                         { "@SalesTaker", "01631" },
+                        { "@SalesStatus", 1 },
                         { "@DataAreaID", "mrp" },
                         { "@Dimension1", "06" },
                         { "@Dimension2", "0600001" },
@@ -401,7 +397,7 @@ namespace ax.Pages
                             string inventTransId = await FetchInventTransIdAsync();
                             await IncrementInventTransIdAsync();
 
-                            // Fetch inventory dimension ID based on warehouse details
+                            // Fetch inventory dimension ID based on site 
                             string inventDimId = await FetchInventDimIdAsync(item);
 
                             Console.WriteLine($"      TransID: {inventTransId}");
@@ -410,7 +406,7 @@ namespace ax.Pages
                             // Insert into SALESLINE (Sales Order Line Items)
                             string insertSalesLineQuery = @"
                             INSERT INTO [MATCOAX].[dbo].[SALESLINE]
-                            (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, 
+                            (SALESID, ITEMID, NAME, SALESUNIT, SALESQTY, REMAININVENTPHYSICAL, REMAINSALESPHYSICAL,
                             PACKINGUNIT, PACKINGUNITQTY, MASTERUNIT, MASTERUNITQTY, CURRENCYCODE, 
                             RECID, DATAAREAID, SALESTYPE, INVENTTRANSID, INVENTDIMID, 
                             DIMENSION, DIMENSION2_, DIMENSION3_, LINENUM, QTYORDERED, 
@@ -418,7 +414,7 @@ namespace ax.Pages
                             RECEIPTDATEREQUESTED, SHIPPINGDATEREQUESTED, CREATEDDATETIME)
                         
                         VALUES
-                            (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, 
+                            (@SalesId, @ItemID, @ItemName, @SalesUnit, @SalesQty, @RemainInventPhysical, @RemainSalesPhysical,
                             @PackingUnit, @PackingUnitQty, @MasterUnit, @MasterUnitQty, @CurrencyCode, 
                             @RecID, @DataAreaID, @SalesType, @InventTransID, @InventDimID, 
                             @Dimension1, @Dimension2, @Dimension3, @LineNum, @QtyOredered, 
@@ -434,6 +430,8 @@ namespace ax.Pages
                             { "@ItemName", item.ItemName },
                             { "@SalesUnit", item.Unit },
                             { "@SalesQty", item.Quantity },
+                            { "@RemainInventPhysical", item.Quantity },
+                            { "@RemainSalesPhysical", item.Quantity },
                             { "@PackingUnit", item.PackingUnit },
                             { "@PackingUnitQty", item.PackingUnitQty },
                             { "@MasterUnit", item.MasterUnit },
@@ -478,12 +476,12 @@ namespace ax.Pages
                                     INSERT INTO [MATCOAX].[dbo].[INVENTTRANS]
                                     (ITEMID, TRANSREFID, CUSTVENDAC, INVENTTRANSID, 
                                     INVENTDIMID, CURRENCYCODE, TRANSTYPE, 
-                                    QTY, DATAAREAID, RECID, DATEPHYSICAL) 
+                                    QTY, DATAAREAID, RECID, STATUSISSUE) 
 
                                     VALUES
                                         (@ItemID, @TransrefID, @CustVendAcc, @InventTransID,
                                         @InventDimID, @CurrencyCode, @TransType,
-                                        @Qty, @DataAreaID, @RecID, GETDATE())";
+                                        @Qty, @DataAreaID, @RecID, @StatusIssue)";
 
                                     var inventTransParams = new Dictionary<string, object>
                                     {
@@ -494,10 +492,12 @@ namespace ax.Pages
                                         { "@InventDimID", inventDimId },
                                         { "@CurrencyCode", "PKR" },
                                         { "@TransType", 0 },
-                                        { "@Qty", item.Quantity },
+                                        { "@Qty", Convert.ToDecimal(item.Quantity) * -1 },
                                         { "@DataAreaID", "mrp" },
                                         { "@RecID", salesLineRecId },
+                                        { "@StatusIssue", 6 },
                                     };
+
 
                                     await Task.Delay(1000);
                                     await _dbService.ExecuteNonQueryAsync(insertInventTransQuery, inventTransParams);
@@ -563,7 +563,6 @@ namespace ax.Pages
         public string Reference { get; set; } = string.Empty;
         public string SalesOrder { get; set; } = string.Empty;
         public string Site { get; set; } = string.Empty;
-        public string Warehouse { get; set; } = string.Empty;
     }
 
     /// Represents an item in the order with its details.
@@ -579,6 +578,5 @@ namespace ax.Pages
         public string Quantity { get; set; } = string.Empty;
         public string Site { get; set; } = string.Empty;
         public string Unit { get; set; } = string.Empty;
-        public string Warehouse { get; set; } = string.Empty;
     }
 }
